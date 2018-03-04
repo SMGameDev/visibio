@@ -1,0 +1,5 @@
+namespace visibio;
+
+table Respawn {
+  name:string;
+}

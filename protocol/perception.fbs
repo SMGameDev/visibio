@@ -1,0 +1,39 @@
+namespace visibio;
+
+struct Vector {
+  x:float;
+  y:float;
+}
+
+struct Point {
+  x:int;
+  y:int;
+}
+
+enum Team : byte { None = 0, Hunters = 1, Ghosts = 2 }
+
+table Player {
+    id:uint64;
+    position:Point;
+    velocity:Vector;
+    rotation:uint16;
+//    team:Team;
+    name:string;
+}
+
+table Bullet {
+    id:uint64;
+    position:Point;
+    velocity:Vector;
+}
+
+union Entity { Player, Bullet }
+
+table Snapshot {
+    entity:Entity;
+}
+
+table Perception {
+    health:uint16;
+    snapshots:[Snapshot];
+}

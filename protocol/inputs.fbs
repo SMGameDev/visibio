@@ -1,0 +1,10 @@
+namespace visibio;
+
+table Inputs {
+    left:bool;
+    right:bool;
+    up:bool;
+    down:bool;
+    shooting:bool;
+    rotation:uint16;
+}

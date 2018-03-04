@@ -1,0 +1,14 @@
+include "respawn.fbs";
+include "world.fbs";
+include "perception.fbs";
+include "inputs.fbs";
+
+namespace visibio;
+
+union Packet { Respawn, World, Perception, Inputs }
+
+table Message {
+  packet:Packet;
+}
+
+root_type Message;

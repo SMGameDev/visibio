@@ -1,0 +1,5 @@
+namespace visibio;
+
+table Death {
+    alive:uint64;
+}

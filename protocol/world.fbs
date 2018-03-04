@@ -1,0 +1,8 @@
+namespace visibio;
+
+table World {
+  id:uint64;
+  width:uint32;
+  height:uint32;
+  map:[ubyte];
+}
