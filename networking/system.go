@@ -28,6 +28,11 @@ func New(remover func(uint64), cursor func() uint64, space *cp.Space) *System {
 	}
 }
 
+func (s *System) Update() {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+}
+
 func (s *System) Add(conn Connection) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -37,14 +42,18 @@ func (s *System) Add(conn Connection) {
 		inputs:       new(fbs.Inputs),
 		lastReceived: time.Now(),
 		spawned:      time.Now(),
+		mu:           new(sync.Mutex),
 	}
 	go s.recv(conn)
 }
 
 func (s *System) recv(conn Connection) {
 	for {
-		data := conn.Read()
-		go s.handle(conn, data)
+		data, err := conn.Read()
+		if err != nil {
+			return
+		}
+		s.handle(conn, data)
 	}
 }
 
@@ -56,49 +65,57 @@ func (s *System) handle(conn Connection, data []byte) {
 		return // client encountered an error on read and err'd out.
 	}
 
+	client := s.clients[conn]
+	client.mu.Lock()
+	defer client.mu.Unlock()
 	// update last packet received time
-	s.clients[conn].lastReceived = time.Now()
+	client.lastReceived = time.Now()
 
 	// parse packet
 	message := fbs.GetRootAsMessage(data, 0)
-	packetTable := new(flatbuffers.Table)
-	if !message.Packet(packetTable) {
-		fmt.Println("received malformed packet from client")
-		go s.Close(conn)
-		return
-	}
-	switch message.PacketType() {
-	case fbs.PacketNONE:
-		// heartbeat
-	case fbs.PacketRespawn:
-		if s.clients[conn].player != nil {
-			fmt.Println("received respawn packet from client while player was alive")
+	var packetTable flatbuffers.Table
+	fmt.Println(message)
+	fmt.Println(*message)
+	fmt.Println(data)
+	if message.Packet(&packetTable) {
+		switch message.PacketType() {
+		case fbs.PacketNONE:
+			// heartbeat
+		case fbs.PacketRespawn:
+			if client.player != nil {
+				fmt.Println("received respawn packet from client while player was alive")
+				go s.Close(conn)
+				return
+			}
+			// todo: respawn logic
+			respawnPacket := new(fbs.Respawn)
+			respawnPacket.Init(packetTable.Bytes, packetTable.Pos)
+			client.player = entity.NewPlayer(s.cursor(), s.space, string(respawnPacket.Name()))
+		case fbs.PacketInputs:
+			client.inputs.Init(packetTable.Bytes, packetTable.Pos)
+		default:
+			fmt.Println("received unknown packet from client")
 			go s.Close(conn)
 			return
 		}
-		// todo: respawn logic
-		respawnPacket := new(fbs.Respawn)
-		respawnPacket.Init(packetTable.Bytes, packetTable.Pos)
-		s.clients[conn].player = entity.NewPlayer(s.cursor(), s.space, string(respawnPacket.Name()))
-	case fbs.PacketInputs:
-		s.clients[conn].inputs.Init(packetTable.Bytes, packetTable.Pos)
-	default:
-		fmt.Println("received unknown packet from client")
-		go s.Close(conn)
-		return
+	} else {
+		fmt.Println("received malformed packet from client")
 	}
 }
 
-func (s *System) Close(conn Connection) {
+func (s *System) Close(conn Connection) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	client := s.clients[conn]
-	if client.player != nil {
-		go s.remover(client.player.Id)
+	if client, ok := s.clients[conn]; ok {
+		client.mu.Lock()
+		if client.player != nil {
+			go s.remover(client.player.Id)
+		}
+		client.mu.Unlock()
+		delete(s.clients, conn)
 	}
-	delete(s.clients, conn)
-	conn.Close()
+	return conn.Close()
 }
 
 func (s *System) Remove(id uint64) {

@@ -10,7 +10,7 @@ struct Point {
   y:int;
 }
 
-enum Team : byte { None = 0, Hunters = 1, Ghosts = 2 }
+// enum Team : byte { None = 0, Hunters = 1, Ghosts = 2 }
 
 table Player {
     id:uint64;

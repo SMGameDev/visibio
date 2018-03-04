@@ -90,33 +90,57 @@ func init() {
 	serverCmd.Flags().StringVar(&addr, "addr", ":8080", "Accept incoming requests at this address.")
 	serverCmd.Flags().DurationVarP(&tick, "tick", "t", 20*time.Millisecond, "Duration of a game tick.")
 }
-
-type websocketConn struct {
-	conn   *websocket.Conn
-	closer func(conn networking.Connection)
-	err    *error
-}
-
-func (c *websocketConn) Send(message []byte) {
-	*c.err = c.conn.WriteMessage(websocket.BinaryMessage, message)
-	return
-}
-
-func (c *websocketConn) Read() ([]byte) {
-	_, message, err := c.conn.ReadMessage()
-	if err != nil {
-		*c.err = err
-		go c.closer(c)
-	}
-	return message
-}
-
-func (c *websocketConn) Close() {
-	*c.err = c.conn.Close()
-	if c.err != nil {
-		// todo handle?
-	}
-}
+//
+//type websocketConn struct {
+//	conn   *websocket.Conn
+//	closer func(conn networking.Connection)
+//	err    *atomic.Value
+//	out    chan []byte
+//	done   chan struct{}
+//}
+//
+//func (w *websocketConn) writer() {
+//	for {
+//		select {
+//		case <-w.done:
+//			return
+//		case message := <-w.out:
+//			err := w.conn.WriteMessage(websocket.BinaryMessage, message)
+//			if err != nil {
+//				w.err.Store(err)
+//				go w.closer(w)
+//				return
+//			}
+//		}
+//	}
+//}
+//
+//func (c *websocketConn) Send(message []byte) {
+//	select {
+//	case <-c.done:
+//		return
+//	case c.out <- message:
+//		return
+//	}
+//}
+//
+//func (c *websocketConn) Read() ([]byte) {
+//	_, message, err := c.conn.ReadMessage()
+//	if err != nil {
+//		c.err.Store(err)
+//		go c.closer(c)
+//	}
+//	return message
+//}
+//
+//func (c *websocketConn) Close() {
+//	close(c.done)
+//	err := c.conn.Close()
+//	if err != nil {
+//		c.err.Store(err)
+//		// todo handle?
+//	}
+//}
 
 type game struct {
 	colliding  *colliding.System
@@ -159,7 +183,6 @@ func (g *game) connect(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("could not upgrade connection: %v\n", err)
 		return
 	}
-
 	fmt.Printf("handling incoming connection\n")
-	g.networking.Add(&websocketConn{conn, g.networking.Close, nil})
+	g.networking.Add(networking.HandleWebsocket(conn))
 }
