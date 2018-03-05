@@ -1,4 +1,4 @@
-package networking
+package server
 
 import (
 	"sync"
@@ -6,33 +6,32 @@ import (
 	"fmt"
 	"time"
 	"github.com/google/flatbuffers/go"
-	"github.com/SMGameDev/visibio/entity"
+	"github.com/SMGameDev/visibio/legacy/entity"
 	"github.com/SMGameDev/visibio/net"
-	"github.com/SMGameDev/visibio/game"
+	"github.com/SMGameDev/visibio/world"
 	"github.com/jakecoffman/cp"
-	"github.com/SMGameDev/visibio/moving"
-	"github.com/SMGameDev/visibio/dying"
 )
 
-type System struct {
-	clients map[net.Connection]*Client
-	remover func(uint64)
-	world   *game.World
-	moving  *moving.System
-	dying   *dying.System
-	*sync.RWMutex
-}
+//
+//type System struct {
+//	clients map[net.Connection]*Client
+//	remover func(uint64)
+//	world   *world.World
+//	moving  *moving.System
+//	dying   *dying.System
+//	*sync.RWMutex
+////}
+//
+//func New(world *world.World, remover func(uint64)) *System {
+//	return &System{
+//		clients: make(map[net.Connection]*Client),
+//		remover: remover,
+//		world:   world,
+//		RWMutex: new(sync.RWMutex),
+//	}
+//}
 
-func New(world *game.World, remover func(uint64)) *System {
-	return &System{
-		clients: make(map[net.Connection]*Client),
-		remover: remover,
-		world:   world,
-		RWMutex: new(sync.RWMutex),
-	}
-}
-
-func (s *System) Update() {
+func (s *Server) Update() {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -42,13 +41,13 @@ func (s *System) Update() {
 		if client.player != nil {
 			builder.Reset()
 			// find all perceivable entities within viewing range
-			perceivables := make(map[Perceivable]struct{}, 0)
+			perceivables := make(map[net.Perceivable]struct{}, 0)
 			s.world.Lock()
 			s.world.Space.BBQuery(
 				cp.NewBBForExtents(client.player.Body.Position(), 200, 200),
-				cp.NewShapeFilter(cp.NO_GROUP, 0, uint(game.Perceivable)),
+				cp.NewShapeFilter(cp.NO_GROUP, 0, uint(world.Perceivable)),
 				func(shape *cp.Shape, _ interface{}) {
-					perceivables[shape.Body().UserData.(Perceivable)] = struct{}{}
+					perceivables[shape.Body().UserData.(net.Perceivable)] = struct{}{}
 				},
 				nil,
 			)
@@ -80,7 +79,7 @@ func (s *System) Update() {
 	}
 }
 
-func (s *System) Add(conn net.Connection) {
+func (s *Server) Connect(conn net.Connection) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -90,12 +89,12 @@ func (s *System) Add(conn net.Connection) {
 		lastReceived: time.Now(),
 		spawned:      time.Now(),
 		mu:           new(sync.Mutex),
-		known:        make(map[Perceivable]struct{}),
+		known:        make(map[net.Perceivable]struct{}),
 	}
 	go s.recv(conn)
 }
 
-func (s *System) recv(conn net.Connection) {
+func (s *Server) recv(conn net.Connection) {
 	for {
 		data, err := conn.Read()
 		if err != nil {
@@ -105,7 +104,7 @@ func (s *System) recv(conn net.Connection) {
 	}
 }
 
-func (s *System) handle(conn net.Connection, data []byte) {
+func (s *Server) handle(conn net.Connection, data []byte) {
 	s.RLock() // read-only because we aren't modifying clients itself, just the specific client
 	defer s.RUnlock()
 
@@ -137,7 +136,7 @@ func (s *System) handle(conn net.Connection, data []byte) {
 			// todo: respawn logic
 			respawnPacket := new(fbs.Respawn)
 			respawnPacket.Init(packetTable.Bytes, packetTable.Pos)
-			client.player = entity.NewPlayer(s.world, string(respawnPacket.Name()))
+			client.player = s.NewPlayer(string(respawnPacket.Name()))
 		case fbs.PacketInputs:
 			client.inputs.Init(packetTable.Bytes, packetTable.Pos)
 		default:
@@ -150,7 +149,7 @@ func (s *System) handle(conn net.Connection, data []byte) {
 	}
 }
 
-func (s *System) Close(conn net.Connection) error {
+func (s *Server) Close(conn net.Connection) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -165,7 +164,7 @@ func (s *System) Close(conn net.Connection) error {
 	return conn.Close()
 }
 
-func (s *System) Remove(id uint64) {
+func (s *Server) Remove(id uint64) {
 	s.RLock() // rlock here because this only affects one client, not the index of clients; different than other systems
 	defer s.RUnlock()
 

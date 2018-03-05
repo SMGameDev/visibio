@@ -11,7 +11,7 @@ type websocketConn struct {
 	done chan struct{}
 }
 
-func HandleWebsocket(conn *websocket.Conn) Connection {
+func Websocket(conn *websocket.Conn) Connection {
 	c := &websocketConn{conn: conn, out: make(chan []byte), in: make(chan []byte), done: make(chan struct{})}
 	go c.reader()
 	go c.writer()

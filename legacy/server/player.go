@@ -1,28 +1,21 @@
-package entity
+package server
 
 import (
 	"github.com/jakecoffman/cp"
 	"github.com/SMGameDev/visibio/fbs"
 	"github.com/google/flatbuffers/go"
-	"github.com/SMGameDev/visibio/game"
+	"github.com/SMGameDev/visibio/world"
 	"github.com/SMGameDev/visibio/moving"
-	"github.com/SMGameDev/visibio/dying"
+	"github.com/SMGameDev/visibio/legacy/dying"
 )
 
-type Player struct {
-	Id     uint64
-	Body   *cp.Body
-	Health *int
-	Name   string
-}
-
-func NewPlayer(world *game.World, moving *moving.System, dying *dying.System, name string, inputs *fbs.Inputs) *Player {
-	id := world.NextId()
+func (s *Server) NewPlayer(name string) (uint64, *cp.Body, *fbs.Inputs) {
+	id := s.NextId()
 	body := cp.NewBody(0, 0)
 	playerShape := cp.NewCircle(body, 15, cp.Vector{})
 	playerShape.SetFriction(1)
 	playerShape.SetElasticity(0)
-	playerShape.SetFilter(cp.NewShapeFilter(uint(id), game.Perceivable|game.Damageable, uint(cp.WILDCARD_COLLISION_TYPE)))
+	playerShape.SetFilter(cp.NewShapeFilter(uint(id), world.Perceivable|world.Damageable, uint(cp.WILDCARD_COLLISION_TYPE)))
 	body.AddShape(playerShape)
 	world.Lock()
 	world.Space.AddBody(body)

@@ -1,7 +1,7 @@
-package networking
+package server
 
 import (
-	"github.com/SMGameDev/visibio/entity"
+	"github.com/SMGameDev/visibio/legacy/entity"
 	"github.com/SMGameDev/visibio/fbs"
 	"time"
 	"sync"

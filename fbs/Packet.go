@@ -8,6 +8,7 @@ const (
 	PacketWorld = 2
 	PacketPerception = 3
 	PacketInputs = 4
+	PacketDeath = 5
 )
 
 var EnumNamesPacket = map[int]string{
@@ -16,5 +17,6 @@ var EnumNamesPacket = map[int]string{
 	PacketWorld:"World",
 	PacketPerception:"Perception",
 	PacketInputs:"Inputs",
+	PacketDeath:"Death",
 }
 

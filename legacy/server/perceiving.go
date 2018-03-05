@@ -1,4 +1,4 @@
-package networking
+package server
 
 import (
 	"github.com/google/flatbuffers/go"
@@ -12,10 +12,7 @@ import (
 //	VisibleToAll     = VisibleToGhosts | VisibleToHunters
 //)
 
-type Perceivable interface {
-	// visible returns whether an entity is visible to members of another team
-	Snapshot(introduce bool, builder *flatbuffers.Builder) flatbuffers.UOffsetT
-}
+
 //
 //type perceivingEntity struct {
 //	conn   net.Connection

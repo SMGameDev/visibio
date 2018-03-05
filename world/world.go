@@ -1,14 +1,12 @@
-package game
+package world
 
 import (
-	"sync"
 	"github.com/jakecoffman/cp"
-	"github.com/SMGameDev/visibio/dying"
+	"github.com/SMGameDev/visibio/legacy/dying"
 	"sync/atomic"
 )
 
 type World struct {
-	*sync.RWMutex
 	Space    *cp.Space
 	entities map[uint64]*cp.Body
 	maxId    uint64
@@ -46,7 +44,6 @@ func NewWorld(width, height float64) *World {
 	}
 
 	return &World{
-		RWMutex:  new(sync.RWMutex),
 		Space:    space,
 		entities: make(map[uint64]*cp.Body),
 		maxId:    0,
@@ -54,24 +51,15 @@ func NewWorld(width, height float64) *World {
 }
 
 func (w *World) Add(id uint64, body *cp.Body) {
-	w.Lock()
-	defer w.Unlock()
-
 	w.Space.AddBody(body)
 	w.entities[id] = body
 }
 
 func (w *World) Update(dt float64) {
-	w.RLock()
-	defer w.RUnlock()
-
 	w.Space.Step(dt)
 }
 
 func (w *World) Remove(id uint64) {
-	w.Lock()
-	defer w.Unlock()
-
 	if b, ok := w.entities[id]; ok {
 		w.Space.RemoveBody(b)
 		delete(w.entities, id)

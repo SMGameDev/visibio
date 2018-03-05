@@ -1,10 +1,9 @@
 package moving
 
 import (
-	"sync"
 	"github.com/SMGameDev/visibio/fbs"
 	"github.com/jakecoffman/cp"
-	"github.com/SMGameDev/visibio/game"
+	"github.com/SMGameDev/visibio/world"
 )
 
 type movingEntity struct {
@@ -15,60 +14,48 @@ type movingEntity struct {
 
 type System struct {
 	entities map[uint64]movingEntity
-	world    *game.World
-	mu       *sync.RWMutex
+	world    *world.World
 }
 
-func New(world *game.World) *System {
+func New(world *world.World) *System {
 	return &System{
 		entities: make(map[uint64]movingEntity),
 		world:    world,
-		mu:       &sync.RWMutex{},
 	}
 }
 
 func (s *System) Add(id uint64, inputs *fbs.Inputs, body *cp.Body, acceleration float64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.entities[id]=movingEntity{
-		inputs: inputs,
-		body: body,
-		acceleration:acceleration,
+	s.entities[id] = movingEntity{
+		inputs:       inputs,
+		body:         body,
+		acceleration: acceleration,
 	}
 }
 
 func (s *System) Update() {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	s.world.Lock()
-	defer s.world.Unlock()
-
 	for _, entity := range s.entities {
-		force := cp.Vector{0, 0}
-		if entity.inputs.Left() != entity.inputs.Right() {
-			if entity.inputs.Left() > 0 {
-				force.X = -float64(entity.acceleration)
-			} else {
-				force.X = float64(entity.acceleration)
+		if len(entity.inputs.Table().Bytes) > 0 {
+			force := cp.Vector{0, 0}
+			if entity.inputs.Left() != entity.inputs.Right() {
+				if entity.inputs.Left() > 0 {
+					force.X = -float64(entity.acceleration)
+				} else {
+					force.X = float64(entity.acceleration)
+				}
 			}
-		}
-		if entity.inputs.Down() != entity.inputs.Up() {
-			if entity.inputs.Down() > 0 {
-				force.Y = -float64(entity.acceleration)
-			} else {
-				force.Y = float64(entity.acceleration)
+			if entity.inputs.Down() != entity.inputs.Up() {
+				if entity.inputs.Down() > 0 {
+					force.Y = -float64(entity.acceleration)
+				} else {
+					force.Y = float64(entity.acceleration)
+				}
 			}
+			entity.body.SetForce(force)
+			entity.body.SetAngle(float64(entity.inputs.Rotation()))
 		}
-		entity.body.SetForce(force)
-		entity.body.SetAngle(float64(entity.inputs.Rotation()))
 	}
 }
 
 func (s *System) Remove(id uint64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	delete(s.entities, id)
 }

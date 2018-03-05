@@ -1,4 +1,4 @@
-package game
+package world
 
 const (
 	Static uint = 1 << iota
