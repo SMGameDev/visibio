@@ -10,12 +10,16 @@ import (
 	"github.com/SMGameDev/visibio/net"
 	"github.com/SMGameDev/visibio/game"
 	"github.com/jakecoffman/cp"
+	"github.com/SMGameDev/visibio/moving"
+	"github.com/SMGameDev/visibio/dying"
 )
 
 type System struct {
 	clients map[net.Connection]*Client
 	remover func(uint64)
 	world   *game.World
+	moving  *moving.System
+	dying   *dying.System
 	*sync.RWMutex
 }
 
@@ -32,7 +36,7 @@ func (s *System) Update() {
 	s.RLock()
 	defer s.RUnlock()
 
-	builder := flatbuffers.NewBuilder(0)
+	builder := flatbuffers.NewBuilder(100)
 	for conn, client := range s.clients {
 		client.mu.Lock()
 		if client.player != nil {
@@ -63,7 +67,11 @@ func (s *System) Update() {
 			fbs.PerceptionAddHealth(builder, uint16(*client.player.Health))
 			fbs.PerceptionAddSnapshots(builder, snapshots)
 			perception := fbs.PerceptionEnd(builder)
-			builder.Finish(perception)
+			fbs.MessageStart(builder)
+			fbs.MessageAddPacketType(builder, fbs.PacketPerception)
+			fbs.MessageAddPacket(builder, perception)
+			message := fbs.MessageEnd(builder)
+			builder.Finish(message)
 			data := make([]byte, 0, len(builder.FinishedBytes()))
 			copy(data, builder.FinishedBytes()[:])
 			go conn.Send(data)
@@ -82,6 +90,7 @@ func (s *System) Add(conn net.Connection) {
 		lastReceived: time.Now(),
 		spawned:      time.Now(),
 		mu:           new(sync.Mutex),
+		known:        make(map[Perceivable]struct{}),
 	}
 	go s.recv(conn)
 }

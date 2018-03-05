@@ -27,6 +27,17 @@ func New(world *game.World) *System {
 	}
 }
 
+func (s *System) Add(id uint64, inputs *fbs.Inputs, body *cp.Body, acceleration float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.entities[id]=movingEntity{
+		inputs: inputs,
+		body: body,
+		acceleration:acceleration,
+	}
+}
+
 func (s *System) Update() {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

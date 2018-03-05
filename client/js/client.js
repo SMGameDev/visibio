@@ -5,11 +5,17 @@ var open = false;
 
 ws.onopen = function () {
     console.log("connection opened");
-    open = true
+    open = true;
+    respawn('meyer');
 };
 ws.onmessage = function (message) {
-    console.log("received message:")
+    console.log("received message:");
     console.log(message)
+    var m = visibio.Message.getRootAsMessage(new flatbuffers.ByteBuffer(message.data), null);
+    console.log(m.packetType());
+    var packet = {};
+    m.packet(packet);
+    console.log(packet);
 };
 ws.onerror = function (e) {
     console.log("error: " + e)
@@ -32,7 +38,7 @@ function respawn(name) {
     visibio.Message.addPacket(builder, r);
     var m = visibio.Message.endMessage(builder);
     builder.finish(m);
-    buf = builder.asUint8Array();
+    var buf = builder.asUint8Array();
     console.log("sending: " + buf);
-    ws.send(buf)
+    ws.send(buf);
 }

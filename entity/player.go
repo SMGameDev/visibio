@@ -5,6 +5,8 @@ import (
 	"github.com/SMGameDev/visibio/fbs"
 	"github.com/google/flatbuffers/go"
 	"github.com/SMGameDev/visibio/game"
+	"github.com/SMGameDev/visibio/moving"
+	"github.com/SMGameDev/visibio/dying"
 )
 
 type Player struct {
@@ -14,16 +16,20 @@ type Player struct {
 	Name   string
 }
 
-func NewPlayer(world *game.World, name string) *Player {
+func NewPlayer(world *game.World, moving *moving.System, dying *dying.System, name string, inputs *fbs.Inputs) *Player {
 	id := world.NextId()
 	body := cp.NewBody(0, 0)
 	playerShape := cp.NewCircle(body, 15, cp.Vector{})
+	playerShape.SetFriction(1)
+	playerShape.SetElasticity(0)
 	playerShape.SetFilter(cp.NewShapeFilter(uint(id), game.Perceivable|game.Damageable, uint(cp.WILDCARD_COLLISION_TYPE)))
 	body.AddShape(playerShape)
 	world.Lock()
 	world.Space.AddBody(body)
 	world.Unlock()
 	var health int = 100
+	moving.Add(id, inputs, body, 4)
+	dying.Add(id, &health)
 	return &Player{
 		Id:     id,
 		Body:   body,
