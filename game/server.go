@@ -136,8 +136,7 @@ func (g *Game) newPlayer(name string, inputs *fbs.Inputs, conn net.Connection) u
 	defer g.Unlock()
 
 	id := g.world.NextId()
-	var health *int = new(int)
-	*health = 100
+	var health uint16 = 100
 	body := cp.NewBody(0, 0)
 	playerShape := cp.NewCircle(body, 15, cp.Vector{})
 	playerShape.SetElasticity(0)
@@ -159,7 +158,7 @@ func (g *Game) newPlayer(name string, inputs *fbs.Inputs, conn net.Connection) u
 	}
 	g.world.Add(id, body)
 	g.mov.Add(id, inputs, body, PlayerAcceleration)
-	g.per.Add(id, conn, body)
+	g.per.Add(id, conn, body, &health)
 	return id
 }
 

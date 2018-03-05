@@ -1,5 +1,5 @@
 var ws = new WebSocket("ws://localhost:8080");
-ws.binaryType = "arraybuffer";
+ws.binaryType = 'arraybuffer';
 
 var open = false;
 
@@ -8,13 +8,13 @@ ws.onopen = function () {
     open = true;
     respawn('meyer');
 };
-ws.onmessage = function (message) {
-    console.log("received message:");
-    console.log(message)
-    var m = visibio.Message.getRootAsMessage(new flatbuffers.ByteBuffer(message.data), null);
-    console.log(m.packetType());
+ws.onmessage = function (e) {
+    console.log(e.data);
+    var buf = new Uint8Array(e.data);
+    var m = visibio.Message.getRootAsMessage(new flatbuffers.ByteBuffer(buf), null);
+    console.log(m);
     var packet = {};
-    m.packet(packet);
+    console.log(m.packet(packet));
     console.log(packet);
 };
 ws.onerror = function (e) {

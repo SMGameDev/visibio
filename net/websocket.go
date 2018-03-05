@@ -2,17 +2,19 @@ package net
 
 import (
 	"github.com/gorilla/websocket"
+	"sync"
 )
 
 type websocketConn struct {
-	conn *websocket.Conn
-	out  chan []byte
-	in   chan []byte
-	done chan struct{}
+	conn   *websocket.Conn
+	out    chan []byte
+	in     chan []byte
+	done   chan struct{}
+	closer *sync.Once
 }
 
 func Websocket(conn *websocket.Conn) Connection {
-	c := &websocketConn{conn: conn, out: make(chan []byte), in: make(chan []byte), done: make(chan struct{})}
+	c := &websocketConn{conn: conn, out: make(chan []byte), in: make(chan []byte), done: make(chan struct{}), closer: &sync.Once{}}
 	go c.reader()
 	go c.writer()
 	return c
@@ -73,6 +75,8 @@ func (c *websocketConn) reader() {
 }
 
 func (c *websocketConn) Close() error {
-	close(c.done)
+	c.closer.Do(func() {
+		close(c.done)
+	})
 	return c.conn.Close()
 }

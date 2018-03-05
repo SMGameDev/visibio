@@ -6,6 +6,7 @@ import (
 	"github.com/SMGameDev/visibio/world"
 	"github.com/google/flatbuffers/go"
 	"github.com/SMGameDev/visibio/fbs"
+	"fmt"
 )
 
 type perceiver struct {
@@ -27,8 +28,8 @@ func New(world *world.World) *System {
 	}
 }
 
-func (s *System) Add(id uint64, conn net.Connection, body *cp.Body) {
-	s.perceivers[id] = perceiver{conn: conn, body: body, known: make(map[net.Perceivable]struct{})}
+func (s *System) Add(id uint64, conn net.Connection, body *cp.Body, health *uint16) {
+	s.perceivers[id] = perceiver{conn: conn, body: body, health: health, known: make(map[net.Perceivable]struct{})}
 }
 
 func (s *System) Remove(id uint64) {
@@ -70,8 +71,9 @@ func (s *System) Update() {
 		fbs.MessageAddPacket(builder, perception)
 		message := fbs.MessageEnd(builder)
 		builder.Finish(message)
-		data := make([]byte, 0, len(builder.FinishedBytes()))
-		copy(data, builder.FinishedBytes()[:])
-		go p.conn.Send(data)
+		//data := make([]byte, 0, len(builder.FinishedBytes()))
+		//copy(data, builder.FinishedBytes())
+		fmt.Println(builder.FinishedBytes())
+		go p.conn.Send(builder.FinishedBytes())
 	}
 }
