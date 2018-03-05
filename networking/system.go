@@ -2,40 +2,79 @@ package networking
 
 import (
 	"sync"
-	"github.com/jakecoffman/cp"
 	"github.com/SMGameDev/visibio/fbs"
 	"fmt"
 	"time"
 	"github.com/google/flatbuffers/go"
 	"github.com/SMGameDev/visibio/entity"
+	"github.com/SMGameDev/visibio/net"
+	"github.com/SMGameDev/visibio/game"
+	"github.com/jakecoffman/cp"
 )
 
 type System struct {
-	clients map[Connection]*Client
+	clients map[net.Connection]*Client
 	remover func(uint64)
-	cursor  func() uint64
-	space   *cp.Space
-	mu      *sync.RWMutex
+	world   *game.World
+	*sync.RWMutex
 }
 
-func New(remover func(uint64), cursor func() uint64, space *cp.Space) *System {
+func New(world *game.World, remover func(uint64)) *System {
 	return &System{
-		clients: make(map[Connection]*Client),
+		clients: make(map[net.Connection]*Client),
 		remover: remover,
-		cursor:  cursor,
-		space:   space,
-		mu:      new(sync.RWMutex),
+		world:   world,
+		RWMutex: new(sync.RWMutex),
 	}
 }
 
 func (s *System) Update() {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.RLock()
+	defer s.RUnlock()
+
+	builder := flatbuffers.NewBuilder(0)
+	for conn, client := range s.clients {
+		client.mu.Lock()
+		if client.player != nil {
+			builder.Reset()
+			// find all perceivable entities within viewing range
+			perceivables := make(map[Perceivable]struct{}, 0)
+			s.world.Lock()
+			s.world.Space.BBQuery(
+				cp.NewBBForExtents(client.player.Body.Position(), 200, 200),
+				cp.NewShapeFilter(cp.NO_GROUP, 0, uint(game.Perceivable)),
+				func(shape *cp.Shape, _ interface{}) {
+					perceivables[shape.Body().UserData.(Perceivable)] = struct{}{}
+				},
+				nil,
+			)
+			s.world.Unlock()
+			var perceptions = make([]flatbuffers.UOffsetT, 0, len(perceivables))
+			for perceivable := range perceivables {
+				_, known := client.known[perceivable]
+				perceptions = append(perceptions, perceivable.Snapshot(known, builder))
+			}
+			fbs.PerceptionStartSnapshotsVector(builder, len(perceivables))
+			for i := len(perceptions) - 1; i >= 0; i-- {
+				builder.PrependUOffsetT(perceptions[i])
+			}
+			snapshots := builder.EndVector(len(perceivables))
+			fbs.PerceptionStart(builder)
+			fbs.PerceptionAddHealth(builder, uint16(*client.player.Health))
+			fbs.PerceptionAddSnapshots(builder, snapshots)
+			perception := fbs.PerceptionEnd(builder)
+			builder.Finish(perception)
+			data := make([]byte, 0, len(builder.FinishedBytes()))
+			copy(data, builder.FinishedBytes()[:])
+			go conn.Send(data)
+		}
+		client.mu.Unlock()
+	}
 }
 
-func (s *System) Add(conn Connection) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *System) Add(conn net.Connection) {
+	s.Lock()
+	defer s.Unlock()
 
 	s.clients[conn] = &Client{
 		player:       nil,
@@ -47,7 +86,7 @@ func (s *System) Add(conn Connection) {
 	go s.recv(conn)
 }
 
-func (s *System) recv(conn Connection) {
+func (s *System) recv(conn net.Connection) {
 	for {
 		data, err := conn.Read()
 		if err != nil {
@@ -57,9 +96,9 @@ func (s *System) recv(conn Connection) {
 	}
 }
 
-func (s *System) handle(conn Connection, data []byte) {
-	s.mu.RLock() // read-only because we aren't modifying clients itself, just the specific client
-	defer s.mu.RUnlock()
+func (s *System) handle(conn net.Connection, data []byte) {
+	s.RLock() // read-only because we aren't modifying clients itself, just the specific client
+	defer s.RUnlock()
 
 	if _, ok := s.clients[conn]; !ok {
 		return // client encountered an error on read and err'd out.
@@ -70,7 +109,6 @@ func (s *System) handle(conn Connection, data []byte) {
 	defer client.mu.Unlock()
 	// update last packet received time
 	client.lastReceived = time.Now()
-
 	// parse packet
 	message := fbs.GetRootAsMessage(data, 0)
 	var packetTable flatbuffers.Table
@@ -90,7 +128,7 @@ func (s *System) handle(conn Connection, data []byte) {
 			// todo: respawn logic
 			respawnPacket := new(fbs.Respawn)
 			respawnPacket.Init(packetTable.Bytes, packetTable.Pos)
-			client.player = entity.NewPlayer(s.cursor(), s.space, string(respawnPacket.Name()))
+			client.player = entity.NewPlayer(s.world, string(respawnPacket.Name()))
 		case fbs.PacketInputs:
 			client.inputs.Init(packetTable.Bytes, packetTable.Pos)
 		default:
@@ -103,9 +141,9 @@ func (s *System) handle(conn Connection, data []byte) {
 	}
 }
 
-func (s *System) Close(conn Connection) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *System) Close(conn net.Connection) error {
+	s.Lock()
+	defer s.Unlock()
 
 	if client, ok := s.clients[conn]; ok {
 		client.mu.Lock()
@@ -119,10 +157,11 @@ func (s *System) Close(conn Connection) error {
 }
 
 func (s *System) Remove(id uint64) {
-	s.mu.RLock() // rlock here because this only affects one client, not the index of clients; different than other systems
-	defer s.mu.RUnlock()
+	s.RLock() // rlock here because this only affects one client, not the index of clients; different than other systems
+	defer s.RUnlock()
 
 	for conn, client := range s.clients {
+		client.mu.Lock()
 		if client.player != nil && client.player.Id == id {
 			builder := flatbuffers.NewBuilder(8)
 			fbs.DeathStart(builder)
@@ -132,5 +171,6 @@ func (s *System) Remove(id uint64) {
 			go conn.Send(builder.FinishedBytes())
 			client.player = nil
 		}
+		client.mu.Unlock()
 	}
 }

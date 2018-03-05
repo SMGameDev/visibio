@@ -12,6 +12,7 @@ type Client struct {
 	inputs       *fbs.Inputs
 	lastReceived time.Time
 	spawned      time.Time
-	closer       *sync.Once
-	mu           *sync.Mutex
+	known        map[Perceivable]struct{}
+	//closer       *sync.Once
+	mu *sync.Mutex
 }

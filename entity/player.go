@@ -4,24 +4,25 @@ import (
 	"github.com/jakecoffman/cp"
 	"github.com/SMGameDev/visibio/fbs"
 	"github.com/google/flatbuffers/go"
-	"github.com/SMGameDev/visibio/colliding"
+	"github.com/SMGameDev/visibio/game"
 )
 
 type Player struct {
 	Id     uint64
 	Body   *cp.Body
 	Health *int
-	//Team   int8
-	Name string
+	Name   string
 }
 
-func NewPlayer(id uint64, space *cp.Space, /*team int8,*/ name string) *Player {
+func NewPlayer(world *game.World, name string) *Player {
+	id := world.NextId()
 	body := cp.NewBody(0, 0)
 	playerShape := cp.NewCircle(body, 15, cp.Vector{})
-	playerShape.SetFilter(cp.NewShapeFilter(uint(id), colliding.Perceivable|colliding.Damageable, uint(cp.WILDCARD_COLLISION_TYPE)))
+	playerShape.SetFilter(cp.NewShapeFilter(uint(id), game.Perceivable|game.Damageable, uint(cp.WILDCARD_COLLISION_TYPE)))
 	body.AddShape(playerShape)
-	space.AddBody(body)
-
+	world.Lock()
+	world.Space.AddBody(body)
+	world.Unlock()
 	var health int = 100
 	return &Player{
 		Id:     id,

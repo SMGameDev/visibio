@@ -1,11 +1,15 @@
 var ws = new WebSocket("ws://localhost:8080");
 ws.binaryType = "arraybuffer";
 
+var open = false;
+
 ws.onopen = function () {
-    console.log("connection opened")
+    console.log("connection opened");
+    open = true
 };
 ws.onmessage = function (message) {
-    console.log("received message: " + message)
+    console.log("received message:")
+    console.log(message)
 };
 ws.onerror = function (e) {
     console.log("error: " + e)
@@ -15,6 +19,9 @@ ws.onclose = function () {
 };
 
 function respawn(name) {
+    if (!open) {
+        throw new Error("cannot send message before connection is open")
+    }
     var builder = new flatbuffers.Builder(name.length * 4);
     var n = builder.createString('meyer');
     visibio.Respawn.startRespawn(builder);
@@ -26,12 +33,6 @@ function respawn(name) {
     var m = visibio.Message.endMessage(builder);
     builder.finish(m);
     buf = builder.asUint8Array();
-
     console.log("sending: " + buf);
     ws.send(buf)
 }
-//
-// function decodeRespawn(data) {
-//     var r = visibio.Respawn.getRootAsRespawn(data,null)
-//     return r.name()
-// }

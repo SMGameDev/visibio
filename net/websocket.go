@@ -1,4 +1,4 @@
-package networking
+package net
 
 import (
 	"github.com/gorilla/websocket"
@@ -60,12 +60,13 @@ func (c *websocketConn) reader() {
 		if err != nil {
 			return
 		}
+	pushToIn:
 		for {
 			select {
 			case <-c.done:
 				return
 			case c.in <- message:
-				break
+				break pushToIn
 			}
 		}
 	}

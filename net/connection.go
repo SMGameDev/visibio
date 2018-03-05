@@ -1,4 +1,4 @@
-package networking
+package net
 
 // Connection represents a connection to the server.
 type Connection interface {

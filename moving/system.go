@@ -4,6 +4,7 @@ import (
 	"sync"
 	"github.com/SMGameDev/visibio/fbs"
 	"github.com/jakecoffman/cp"
+	"github.com/SMGameDev/visibio/game"
 )
 
 type movingEntity struct {
@@ -14,19 +15,24 @@ type movingEntity struct {
 
 type System struct {
 	entities map[uint64]movingEntity
+	world    *game.World
 	mu       *sync.RWMutex
 }
 
-func New() *System {
+func New(world *game.World) *System {
 	return &System{
 		entities: make(map[uint64]movingEntity),
-		mu: &sync.RWMutex{},
+		world:    world,
+		mu:       &sync.RWMutex{},
 	}
 }
 
 func (s *System) Update() {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
+	s.world.Lock()
+	defer s.world.Unlock()
 
 	for _, entity := range s.entities {
 		force := cp.Vector{0, 0}

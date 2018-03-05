@@ -1,4 +1,4 @@
-package colliding
+package game
 
 const (
 	Static uint = 1 << iota
