@@ -66,8 +66,6 @@ func (g *Game) Handle(conn net.Connection) {
 	g.Lock()
 	defer g.Unlock()
 
-	fmt.Println("here")
-
 	g.clients[conn] = &client{
 		inputs:     new(fbs.Inputs),
 		entityId:   nil,
@@ -80,7 +78,6 @@ func (g *Game) Handle(conn net.Connection) {
 
 func (g *Game) reader(conn net.Connection) {
 	for {
-		fmt.Println("reader")
 		messageBytes, err := conn.Read()
 		if err != nil {
 			go g.Remove(conn)

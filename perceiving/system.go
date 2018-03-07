@@ -6,7 +6,6 @@ import (
 	"github.com/SMGameDev/visibio/world"
 	"github.com/google/flatbuffers/go"
 	"github.com/SMGameDev/visibio/fbs"
-	"fmt"
 )
 
 type perceiver struct {
@@ -37,9 +36,8 @@ func (s *System) Remove(id uint64) {
 }
 
 func (s *System) Update() {
-	builder := flatbuffers.NewBuilder(100)
 	for _, p := range s.perceivers {
-		builder.Reset()
+		builder := flatbuffers.NewBuilder(100)
 		// find all perceivable entities within viewing range
 		perceivables := make(map[net.Perceivable]struct{}, 0)
 		s.world.Space.BBQuery(
@@ -73,7 +71,6 @@ func (s *System) Update() {
 		builder.Finish(message)
 		//data := make([]byte, 0, len(builder.FinishedBytes()))
 		//copy(data, builder.FinishedBytes())
-		fmt.Println(builder.FinishedBytes())
 		go p.conn.Send(builder.FinishedBytes())
 	}
 }
