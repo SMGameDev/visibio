@@ -53,6 +53,8 @@ var serverCmd = &cobra.Command{
 				}
 			}
 		}()
+		fmt.Println("Server started...")
+
 		http.Handle("/", connect(g))
 		log.Fatal(http.ListenAndServe(addr, nil))
 	},
