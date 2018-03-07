@@ -88,7 +88,6 @@ func (g *Game) reader(conn net.Connection) {
 }
 
 func (g *Game) handleMessage(conn net.Connection, bytes []byte) {
-	fmt.Printf("handling incoming message: %v\n", bytes)
 	if _, ok := g.clients[conn]; !ok {
 		return // client encountered an error on read and err'd out.
 	}
@@ -106,6 +105,7 @@ func (g *Game) handleMessage(conn net.Connection, bytes []byte) {
 		case fbs.PacketNONE:
 			// heartbeat
 		case fbs.PacketRespawn:
+			fmt.Printf("handling incoming respawn packet: %v\n", bytes)
 			if client.entityId != nil {
 				fmt.Println("received respawn packet from client while player was alive")
 				go g.Remove(conn)
@@ -114,9 +114,9 @@ func (g *Game) handleMessage(conn net.Connection, bytes []byte) {
 			respawnPacket := new(fbs.Respawn)
 			respawnPacket.Init(packetTable.Bytes, packetTable.Pos)
 			go g.newPlayer(string(respawnPacket.Name()), client.inputs, conn)
-			fmt.Println("new player created")
 			return
 		case fbs.PacketInputs:
+			fmt.Printf("handling incoming inputs packet: %v\n", bytes)
 			client.inputs.Init(packetTable.Bytes, packetTable.Pos)
 		default:
 			fmt.Println("received unknown packet from client")
