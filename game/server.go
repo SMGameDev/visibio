@@ -176,7 +176,7 @@ func (g *Game) newPlayer(name string, inputs *fbs.Inputs, conn net.Connection) u
 	g.world.Add(id, body)
 	g.mov.Add(id, inputs, body, PlayerAcceleration)
 	g.per.Add(id, conn, body, &health)
-	g.
+	g.hea.Add(id, &health)
 	return id
 }
 
