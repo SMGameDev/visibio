@@ -10,6 +10,8 @@ import (
 	"log"
 	"github.com/SMGameDev/visibio/net"
 	"github.com/SMGameDev/visibio/game"
+	"math/big"
+	"go.uber.org/zap"
 )
 
 var (
@@ -22,6 +24,7 @@ var (
 			return true
 		},
 	} // use default options
+	logger *zap.Logger
 )
 
 // serverCmd represents the server command
@@ -30,31 +33,45 @@ var serverCmd = &cobra.Command{
 	Short: "Hosts a visibio server.",
 	Long:  `Use this command to host a visibio server for players to connect to.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Starting server...")
+		// initialize logger
+		var err error
+		if debug {
+			logger, err = zap.NewDevelopment()
+		} else {
+			logger, err = zap.NewProduction()
+		}
+		if err != nil {
+			log.Fatalf("can't initialize zap logger: %v", err)
+		}
+		defer logger.Sync()
 
-		g := game.New(width, height)
+		g := game.New(width, height, logger)
 		go func() {
+			ticks := big.NewInt(0)
+			one := big.NewInt(1)
 			ticker := time.NewTicker(tick)
 			var skipped = 0
 			start := time.Now()
 			for t := range ticker.C {
 				select {
-				case <-ticker.C: // if the next tick is immediately available (means last tick took > 20ms to complete)
+				case <-ticker.C: // if the next tick is immediately available (which means we're lagging)
 					skipped++
 					break
 				default:
 					if skipped > 0 {
 						fmt.Printf("skipped %d ticks; is the server lagging?", skipped)
+						ticks.Add(ticks, big.NewInt(int64(skipped)))
 						skipped = 0
 					}
-					delta := float64(t.Sub(start).Nanoseconds() / 1000000)
+					delta := float64(t.Sub(start).Nanoseconds() / 1000) // microseconds
 					start = t
 					g.Tick(delta)
+					ticks.Add(ticks, one)
+					logger.Debug("game tick", zap.Int64("tick", ticks.Int64()), zap.Float64("delta", delta))
 				}
 			}
 		}()
-		fmt.Println("Server started...")
-
+		logger.Info("game started")
 		http.Handle("/", connect(g))
 		log.Fatal(http.ListenAndServe(addr, nil))
 	},
@@ -68,45 +85,15 @@ func init() {
 	serverCmd.Flags().DurationVarP(&tick, "tick", "t", 20*time.Millisecond, "Duration of a game tick.")
 }
 
-//
-//type server struct {
-//	world      *world.World
-//	moving     *moving.System
-//	dying      *dying.System
-//	networking *networking.System
-//	upgrader   *websocket.Upgrader
-//	*sync.RWMutex
-//}
-//
-//func (s *server) tick(dt float64) {
-//	s.RLock()
-//	defer s.RUnlock()
-//
-//	s.world.Update(dt)
-//	s.moving.Update()
-//	s.networking.Update()
-//	s.dying.Update()
-//}
-//
 func connect(g *game.Game) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			fmt.Printf("could not upgrade connection: %v\n", err)
+			logger.Info("could not upgrade connection: %v\n", zap.Error(err))
 			return
 		}
-		g.Handle(net.Websocket(conn))
-		fmt.Printf("handling incoming connection\n")
+		g.Add(net.Websocket(conn))
+		logger.Info("client connected")
 	})
 }
 
-//
-//func (s *server) remover(id uint64) {
-//	s.Lock()
-//	defer s.Unlock()
-//
-//	s.moving.Remove(id)
-//	s.dying.Remove(id)
-//	s.networking.Remove(id)
-//	s.world.Remove(id)
-//}

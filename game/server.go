@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 	"github.com/google/flatbuffers/go"
-	"fmt"
 	"github.com/SMGameDev/visibio/moving"
 	"github.com/SMGameDev/visibio/perceiving"
 	"github.com/jakecoffman/cp"
+	"go.uber.org/zap"
 )
 
 const (
@@ -33,9 +33,10 @@ type Game struct {
 
 	clients map[net.Connection]*client
 	*sync.Mutex
+	logger  *zap.Logger
 }
 
-func New(width, height float64) *Game {
+func New(width, height float64, logger *zap.Logger) *Game {
 	w := world.NewWorld(width, height)
 	return &Game{
 		world:   w,
@@ -44,11 +45,19 @@ func New(width, height float64) *Game {
 		dead:    make(chan uint64, 100),
 		clients: make(map[net.Connection]*client),
 		Mutex:   new(sync.Mutex),
+		logger:  logger,
 	}
 }
 
 func (g *Game) Remove(conn net.Connection) {
+	go g.remove(conn)
+}
+
+func (g *Game) remove(conn net.Connection) {
 	g.Lock()
+	defer g.Unlock()
+
+	g.logger.Info("client disconnected")
 	if client, ok := g.clients[conn]; ok {
 		client.Lock()
 		if client.entityId != nil {
@@ -58,11 +67,13 @@ func (g *Game) Remove(conn net.Connection) {
 		client.Unlock()
 		delete(g.clients, conn)
 	}
-	g.Unlock()
-	conn.Close()
 }
 
-func (g *Game) Handle(conn net.Connection) {
+func (g *Game) Add(conn net.Connection) {
+	go g.add(conn)
+}
+
+func (g *Game) add(conn net.Connection) {
 	g.Lock()
 	defer g.Unlock()
 
@@ -80,51 +91,53 @@ func (g *Game) reader(conn net.Connection) {
 	for {
 		messageBytes, err := conn.Read()
 		if err != nil {
-			go g.Remove(conn)
+			g.logger.Debug("error reading message from client", zap.Error(err))
+			g.Remove(conn)
 			return
 		}
+		g.logger.Debug("handling message from client", zap.ByteString("message", messageBytes))
 		go g.handleMessage(conn, messageBytes)
 	}
 }
 
 func (g *Game) handleMessage(conn net.Connection, bytes []byte) {
-	if _, ok := g.clients[conn]; !ok {
-		return // client encountered an error on read and err'd out.
-	}
+	g.Lock()
+	defer g.Unlock()
 
-	client := g.clients[conn]
-	client.Lock()
-	defer client.Unlock()
-	// update last packet received time
-	client.lastPacket = time.Now()
-	// parse packet
-	message := fbs.GetRootAsMessage(bytes, 0)
-	var packetTable flatbuffers.Table
-	if message.Packet(&packetTable) {
-		switch message.PacketType() {
-		case fbs.PacketNONE:
-			// heartbeat
-		case fbs.PacketRespawn:
-			fmt.Printf("handling incoming respawn packet: %v\n", bytes)
-			if client.entityId != nil {
-				fmt.Println("received respawn packet from client while player was alive")
-				go g.Remove(conn)
+	if client, ok := g.clients[conn]; ok {
+		client.Lock()
+		defer client.Unlock()
+		// update last packet received time
+		client.lastPacket = time.Now()
+		// parse packet
+		message := fbs.GetRootAsMessage(bytes, 0)
+		var packetTable flatbuffers.Table
+		if message.Packet(&packetTable) {
+			switch message.PacketType() {
+			case fbs.PacketNONE:
+				// heartbeat
+			case fbs.PacketRespawn:
+				g.logger.Debug("handling respawn packet")
+				if client.entityId != nil {
+					g.logger.Info("received respawn packet from client while player was alive")
+					g.Remove(conn)
+					return
+				}
+				respawnPacket := new(fbs.Respawn)
+				respawnPacket.Init(packetTable.Bytes, packetTable.Pos)
+				go g.newPlayer(string(respawnPacket.Name()), client.inputs, conn)
+				return
+			case fbs.PacketInputs:
+				g.logger.Info("handling inputs packet")
+				client.inputs.Init(packetTable.Bytes, packetTable.Pos)
+			default:
+				g.logger.Info("unknown packet", zap.Uint8("type", message.PacketType()))
+				g.Remove(conn)
 				return
 			}
-			respawnPacket := new(fbs.Respawn)
-			respawnPacket.Init(packetTable.Bytes, packetTable.Pos)
-			go g.newPlayer(string(respawnPacket.Name()), client.inputs, conn)
-			return
-		case fbs.PacketInputs:
-			fmt.Printf("handling incoming inputs packet: %v\n", bytes)
-			client.inputs.Init(packetTable.Bytes, packetTable.Pos)
-		default:
-			fmt.Println("received unknown packet from client")
-			go g.Remove(conn)
-			return
+		} else {
+			g.logger.Info("malformed packet")
 		}
-	} else {
-		fmt.Println("received malformed packet from client")
 	}
 }
 
@@ -168,7 +181,7 @@ func (p perceivable) Snapshot(introduce bool, builder *flatbuffers.Builder) flat
 }
 
 func (g *Game) Tick(dt float64) {
-	g.Lock()
+	g.Lock() // this should block immediately to allow handlers to finish, don't need new goroutine
 	defer g.Unlock()
 
 	// kill entities

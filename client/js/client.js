@@ -18,7 +18,8 @@ ws.onmessage = function (e) {
     handle(m)
 };
 ws.onerror = function (e) {
-    console.log("connection error: " + e)
+    console.log("connection error")
+    console.log(e)
 };
 ws.onclose = function () {
     console.log("connection closed")

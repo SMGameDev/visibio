@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var cfgFile string
+var debug = false
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -40,9 +41,7 @@ func init() {
 	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.visibio.yaml)")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "log debug messages")
 }
 
 // initConfig reads in config file and ENV variables if set.
