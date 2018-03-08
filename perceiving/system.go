@@ -42,7 +42,7 @@ func (s *System) Update() {
 		perceivables := make(map[net.Perceivable]struct{}, 0)
 		s.world.Space.BBQuery(
 			cp.NewBBForExtents(p.body.Position(), 200, 200),
-			cp.NewShapeFilter(cp.NO_GROUP, 0, uint(world.Perceivable)),
+			cp.NewShapeFilter(cp.NO_GROUP, 0, uint(world.PerceivableBody)),
 			func(shape *cp.Shape, _ interface{}) {
 				perceivables[shape.Body().UserData.(net.Perceivable)] = struct{}{}
 			},

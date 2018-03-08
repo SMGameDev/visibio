@@ -151,7 +151,7 @@ func (g *Game) newPlayer(name string, inputs *fbs.Inputs, conn net.Connection) u
 	playerShape := cp.NewCircle(body, 15, cp.Vector{})
 	playerShape.SetElasticity(0)
 	playerShape.SetFriction(1)
-	playerShape.SetFilter(cp.NewShapeFilter(uint(id), world.Perceivable|world.Damageable, cp.ALL_CATEGORIES))
+	playerShape.SetFilter(cp.NewShapeFilter(uint(id), world.PerceivableBody|world.DamageableBody, cp.ALL_CATEGORIES))
 	body.AddShape(playerShape)
 	body.UserData = perceivable{
 		fn: func(introduce bool, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
