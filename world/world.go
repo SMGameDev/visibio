@@ -30,16 +30,7 @@ func NewWorld(width, height float64) *World {
 		seg.SetElasticity(1)
 		seg.SetFriction(0)
 		// filter indicates it is not perceivable, i.e. is not communicated on connection
-		seg.SetFilter(cp.NewShapeFilter(0, uint(StaticBody), uint(cp.WILDCARD_COLLISION_TYPE)))
-	}
-
-	damageHandler := space.NewCollisionHandler(cp.CollisionType(DamageableBody), cp.CollisionType(DamagerBody))
-	damageHandler.PreSolveFunc = func(arb *cp.Arbiter, space *cp.Space, userData interface{}) bool {
-		damageableBody, damagerBody := arb.Bodies()
-		damageable := damageableBody.UserData.(Damageable)
-		damager := damagerBody.UserData.(Damager)
-		damageable.Damage(damager.DamageAmount())
-		return arb.Ignore() // bullets go through
+		seg.SetFilter(cp.NewShapeFilter(0, uint(Static), uint(cp.WILDCARD_COLLISION_TYPE)))
 	}
 
 	return &World{

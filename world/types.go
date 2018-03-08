@@ -1,17 +1,8 @@
 package world
 
 const (
-	StaticBody      uint = 1 << iota
-	PerceivableBody
-	DamageableBody
-	DamagerBody
+	Static      uint = 1 << iota
+	Perceivable
+	Damageable
+	Damager
 )
-
-
-type Damageable interface {
-	Damage(int)
-}
-
-type Damager interface {
-	DamageAmount() int
-}

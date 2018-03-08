@@ -11,6 +11,7 @@ import (
 	"github.com/SMGameDev/visibio/perceiving"
 	"github.com/jakecoffman/cp"
 	"go.uber.org/zap"
+	"github.com/SMGameDev/visibio/health"
 )
 
 const (
@@ -28,6 +29,7 @@ type Game struct {
 	world *world.World
 	mov   *moving.System
 	per   *perceiving.System
+	hea   *health.System
 
 	dead chan uint64
 
@@ -38,7 +40,8 @@ type Game struct {
 
 func New(width, height float64, logger *zap.Logger) *Game {
 	w := world.NewWorld(width, height)
-	return &Game{
+
+	g := &Game{
 		world:   w,
 		mov:     moving.New(w),
 		per:     perceiving.New(w),
@@ -47,6 +50,10 @@ func New(width, height float64, logger *zap.Logger) *Game {
 		Mutex:   new(sync.Mutex),
 		logger:  logger,
 	}
+	g.hea = health.New(w, func(id uint64) {
+		g.dead <- id
+	})
+	return g
 }
 
 func (g *Game) Remove(conn net.Connection) {
@@ -151,7 +158,7 @@ func (g *Game) newPlayer(name string, inputs *fbs.Inputs, conn net.Connection) u
 	playerShape := cp.NewCircle(body, 15, cp.Vector{})
 	playerShape.SetElasticity(0)
 	playerShape.SetFriction(1)
-	playerShape.SetFilter(cp.NewShapeFilter(uint(id), world.PerceivableBody|world.DamageableBody, cp.ALL_CATEGORIES))
+	playerShape.SetFilter(cp.NewShapeFilter(uint(id), world.Perceivable|world.Damageable, cp.ALL_CATEGORIES))
 	body.AddShape(playerShape)
 	body.UserData = perceivable{
 		fn: func(introduce bool, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
@@ -169,6 +176,7 @@ func (g *Game) newPlayer(name string, inputs *fbs.Inputs, conn net.Connection) u
 	g.world.Add(id, body)
 	g.mov.Add(id, inputs, body, PlayerAcceleration)
 	g.per.Add(id, conn, body, &health)
+	g.
 	return id
 }
 
@@ -192,6 +200,7 @@ killEntities:
 			g.mov.Remove(id)
 			g.per.Remove(id)
 			g.world.Remove(id)
+			g.hea.Remove(id)
 		default:
 			break killEntities
 		}
@@ -201,4 +210,5 @@ killEntities:
 	g.mov.Update()
 	g.per.Update()
 	g.world.Update(dt)
+	g.hea.Update()
 }
