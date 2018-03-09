@@ -4,7 +4,8 @@ ws.binaryType = 'arraybuffer';
 var open = false;
 
 var game = {
-    health: 0
+    health: 0,
+    entities: {}
 };
 
 ws.onopen = function () {
@@ -18,7 +19,7 @@ ws.onmessage = function (e) {
     handle(m)
 };
 ws.onerror = function (e) {
-    console.log("connection error")
+    console.log("connection error");
     console.log(e)
 };
 ws.onclose = function () {
@@ -29,7 +30,33 @@ function handle(m) {
     var packetType = m.packetType();
     switch (packetType) {
         case visibio.Packet.Perception: {
-            game.health = m.packet(new visibio.Perception()).health();
+            var p = m.packet(new visibio.Perception());
+            game.health = p.health();
+            for (var i = 0; i < p.snapshotsLength(); i++) {
+                var snap = p.snapshots(i);
+
+                switch (snap.entityType()) {
+                    case visibio.Entity.Bullet: {
+                        var bullet = snap.entity(new visibio.Bullet());
+                        console.log(bullet);
+                        break;
+                    }
+                    case visibio.Entity.Player: {
+                        var player = snap.entity(new visibio.Player());
+                        game.entities[player.id()] = game.entities[player.id()] || {};
+                        game.entities[player.id()].type = visibio.Entity.Player;
+                        if (player.name() != null) {
+                            game.entities[player.id()].name = player.name();
+                        }
+                        game.entities[player.id()].position.x = player.position().x();
+                        game.entities[player.id()].position.y = player.position().y();
+                        game.entities[player.id()].rotation = player.rotation();
+                        game.entities[player.id()].velocity.x = player.velocity().x();
+                        game.entities[player.id()].velocity.y = player.velocity().y();
+                        break;
+                    }
+                }
+            }
         }
     }
 }
@@ -55,6 +82,7 @@ function respawn(name) {
 
 function tick(timestamp) {
     window.document.getElementById("health").innerHTML = "<p>health: " + game.health + "</p>";
+    window.document.getElementById("entityCount").innerHTML = "<p>" + Object.keys(game.entities).length + "</p>";
     window.requestAnimationFrame(tick);
 }
 
