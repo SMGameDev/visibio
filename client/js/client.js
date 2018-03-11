@@ -26,7 +26,7 @@ ws.onclose = function () {
     console.log("connection closed")
 };
 
-function handle(m) {
+function handle (m) {
     var packetType = m.packetType();
     switch (packetType) {
         case visibio.Packet.Perception: {
@@ -38,7 +38,13 @@ function handle(m) {
                 switch (snap.entityType()) {
                     case visibio.Entity.Bullet: {
                         var bullet = snap.entity(new visibio.Bullet());
-                        console.log(bullet);
+                        game.entities[bullet.id()] = {
+                            type: visibio.Entity.Bullet,
+                            position: {
+                                x: bullet.position().x(),
+                                y: bullet.position().y()
+                            }
+                        };
                         break;
                     }
                     case visibio.Entity.Player: {
@@ -48,9 +54,11 @@ function handle(m) {
                         if (player.name() != null) {
                             game.entities[player.id()].name = player.name();
                         }
+                        game.entities[player.id()].position = {};
                         game.entities[player.id()].position.x = player.position().x();
                         game.entities[player.id()].position.y = player.position().y();
                         game.entities[player.id()].rotation = player.rotation();
+                        game.entities[player.id()].velocity = {};
                         game.entities[player.id()].velocity.x = player.velocity().x();
                         game.entities[player.id()].velocity.y = player.velocity().y();
                         break;
@@ -61,26 +69,26 @@ function handle(m) {
     }
 }
 
-function respawn(name) {
+function respawn (name) {
     if (!open) {
         throw new Error("cannot send message before connection is open")
     }
-    var builder = new flatbuffers.Builder(name.length * 4);
-    var n = builder.createString('meyer');
+    let builder = new flatbuffers.Builder(name.length * 4);
+    let n = builder.createString('meyer');
     visibio.Respawn.startRespawn(builder);
     visibio.Respawn.addName(builder, n);
-    var r = visibio.Respawn.endRespawn(builder);
+    let r = visibio.Respawn.endRespawn(builder);
     visibio.Message.startMessage(builder);
     visibio.Message.addPacketType(builder, visibio.Packet.Respawn);
     visibio.Message.addPacket(builder, r);
-    var m = visibio.Message.endMessage(builder);
+    let m = visibio.Message.endMessage(builder);
     builder.finish(m);
-    var buf = builder.asUint8Array();
+    let buf = builder.asUint8Array();
     console.log("sending: " + buf);
     ws.send(buf);
 }
 
-function tick(timestamp) {
+function tick (timestamp) {
     window.document.getElementById("health").innerHTML = "<p>health: " + game.health + "</p>";
     window.document.getElementById("entityCount").innerHTML = "<p>" + Object.keys(game.entities).length + "</p>";
     window.requestAnimationFrame(tick);

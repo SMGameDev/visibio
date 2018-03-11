@@ -155,6 +155,7 @@ func (g *Game) newPlayer(name string, inputs *fbs.Inputs, conn net.Connection) u
 	id := g.world.NextId()
 	var health uint16 = 100
 	body := cp.NewBody(0, 0)
+	body.SetPosition(cp.Vector{0, 0})
 	playerShape := cp.NewCircle(body, 15, cp.Vector{})
 	playerShape.SetElasticity(0)
 	playerShape.SetFriction(1)
@@ -170,7 +171,11 @@ func (g *Game) newPlayer(name string, inputs *fbs.Inputs, conn net.Connection) u
 			if introduce {
 				fbs.PlayerAddName(builder, builder.CreateString(name))
 			}
-			return fbs.PlayerEnd(builder)
+			player := fbs.PlayerEnd(builder)
+			fbs.SnapshotStart(builder)
+			fbs.SnapshotAddEntityType(builder, fbs.EntityPlayer)
+			fbs.SnapshotAddEntity(builder, player)
+			return fbs.SnapshotEnd(builder)
 		},
 	}
 	g.world.Add(id, body)

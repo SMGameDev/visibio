@@ -5,6 +5,13 @@ import (
 	"sync/atomic"
 )
 
+type Terrain interface {
+	Width() int
+	Height() int
+	// Map returns the terrain map where Map()[x][y] is the value of the cell at (x,y) where (0,0) is the top-left corner.
+	Map() [][]uint8
+}
+
 type World struct {
 	Space    *cp.Space
 	entities map[uint64]*cp.Body
@@ -17,6 +24,7 @@ func (w *World) NextId() uint64 {
 
 func NewWorld(width, height float64) *World {
 	space := cp.NewSpace()
+	space.SetGravity(cp.Vector{0, 0})
 	hw, hh := width/2, height/2
 	sides := []cp.Vector{
 		// outer walls
