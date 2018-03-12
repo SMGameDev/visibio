@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	width    float64 = 4608
-	height   float64 = 4608
+	width    float64 = 192
+	height   float64 = 192
 	addr             = ":8080"
 	tick             = time.Millisecond * 20
 	upgrader         = &websocket.Upgrader{
@@ -61,7 +61,7 @@ var serverCmd = &cobra.Command{
 		manager := ecs.NewManager()
 		space := cp.NewSpace()
 		space.SetGravity(cp.Vector{0, 0})
-		hw, hh := width/2, height/2
+		hw, hh := width*64/2, height*64/2
 		sides := []cp.Vector{
 			// outer walls
 			{-hw, -hh}, {-hw, hh}, // left

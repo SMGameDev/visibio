@@ -1,34 +1,32 @@
 <!DOCTYPE html>
+<html>
 <head>
+    <title>visib.io</title>
+    <style type="text/css">
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: white;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore.js" integrity="sha256-SzKOQsVYGX1bmddyfPzGC6yXY/rWYGUSMOi6+T9gZ+0=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://rawgit.com/google/flatbuffers/master/js/flatbuffers.js"></script>
+    <script type="text/javascript" src="js/visibio_generated.js"></script>
+    <script type="text/javascript" src="js/game.js"></script>
 </head>
 <body>
-<div id="menu-wrapper">
-    <div id="menu">
-        <h1>Visibio</h1>
-        <input type="text" tabindex="0" autofocus placeholder="name" id="nameInput" maxlength="20"/>
-        <button onclick="window.respawn(document.getElementById('nameInput').value)">Play</button>
-    </div>
-    <div id="game">
-        <canvas tabindex="1" id="canvas"></canvas>
-    </div>
+<div id="overlay">
+    <p>A flash of light reveals...</p>
+    <input id="name" type="text" maxlength="15"/>
+    <p>(press enter to spawn)</p>
 </div>
-
-<!--<div id="app">-->
-<!--<p>state: {{state}}</p>-->
-<!--<div v-if="state=='connected'">-->
-<!--<input v-model="name" type="text">-->
-<!--<button v-on:click="respawn">Respawn</button>-->
-<!--</div>-->
-<!--<div v-if="state=='playing'">-->
-<!--<p>id: {{client.game.id}}</p>-->
-<!--<p>name: {{name}}</p>-->
-<!--<p>health: {{client.game.health}}</p>-->
-<!--</div>-->
-<!--</div>-->
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
-<script src="https://rawgit.com/google/flatbuffers/master/js/flatbuffers.js"></script>
-<script src="js/visibio_generated.js"></script>
-<script src="js/app.js"></script>
+<canvas id="canvas" width="800" height="600">Your browser is not supported. Please upgrade to a modern browser like
+    Firefox or Google Chrome.
+</canvas>
 </body>
 </html>

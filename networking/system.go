@@ -142,10 +142,9 @@ func (s *System) newPlayer(conn network.Connection, name string, inputs *fbs.Inp
 				if introduce {
 					n = builder.CreateString(name)
 				}
-				posn := fbs.CreatePoint(builder, int32(body.Position().X), int32(body.Position().Y))
 				fbs.PlayerStart(builder)
 				fbs.PlayerAddId(builder, id)
-				fbs.PlayerAddPosition(builder, posn)
+				fbs.PlayerAddPosition(builder, fbs.CreatePoint(builder, int32(body.Position().X), int32(body.Position().Y)))
 				fbs.PlayerAddRotation(builder, uint16(body.Angle()))
 				if introduce {
 					fbs.PlayerAddName(builder, n)
