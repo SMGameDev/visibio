@@ -4,15 +4,17 @@ package fbs
 
 const (
 	PacketNONE = 0
-	PacketRespawn = 1
-	PacketWorld = 2
-	PacketPerception = 3
-	PacketInputs = 4
-	PacketDeath = 5
+	PacketHeartbeat = 1
+	PacketRespawn = 2
+	PacketWorld = 3
+	PacketPerception = 4
+	PacketInputs = 5
+	PacketDeath = 6
 )
 
 var EnumNamesPacket = map[int]string{
 	PacketNONE:"NONE",
+	PacketHeartbeat:"Heartbeat",
 	PacketRespawn:"Respawn",
 	PacketWorld:"World",
 	PacketPerception:"Perception",

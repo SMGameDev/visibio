@@ -66,7 +66,7 @@ func (s *System) readLoop(conn network.Connection) {
 			s.RemoveClient(conn)
 			return
 		}
-		s.logger.Debug("handling message from client", zap.ByteString("message", messageBytes))
+		s.logger.Debug("handling message from client", zap.Binary("message", messageBytes))
 		go s.handleMessage(conn, messageBytes)
 	}
 }
@@ -74,6 +74,11 @@ func (s *System) readLoop(conn network.Connection) {
 func (s *System) handleMessage(conn network.Connection, bytes []byte) {
 	s.Lock()
 	defer s.Unlock()
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Error("recovered panic", zap.Any("recovery", r))
+		}
+	}()
 
 	if client, ok := s.clients[conn]; ok {
 		client.Lock()
@@ -86,6 +91,8 @@ func (s *System) handleMessage(conn network.Connection, bytes []byte) {
 		if message.Packet(&packetTable) {
 			switch message.PacketType() {
 			case fbs.PacketNONE:
+				return
+			case fbs.PacketHeartbeat:
 				return
 			case fbs.PacketRespawn:
 				s.logger.Debug("handling respawn packet")
@@ -131,12 +138,17 @@ func (s *System) newPlayer(conn network.Connection, name string, inputs *fbs.Inp
 		case *perceiving.System:
 			sys.AddPerceiver(id, conn, body, &health)
 			sys.AddPerceivable(id, network.PerceivableFunc(func(introduce bool, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+				var n flatbuffers.UOffsetT
+				if introduce {
+					n = builder.CreateString(name)
+				}
+				posn := fbs.CreatePoint(builder, int32(body.Position().X), int32(body.Position().Y))
 				fbs.PlayerStart(builder)
 				fbs.PlayerAddId(builder, id)
-				fbs.PlayerAddPosition(builder, fbs.CreatePoint(builder, int32(body.Position().X), int32(body.Position().Y)))
+				fbs.PlayerAddPosition(builder, posn)
 				fbs.PlayerAddRotation(builder, uint16(body.Angle()))
 				if introduce {
-					fbs.PlayerAddName(builder, builder.CreateString(name))
+					fbs.PlayerAddName(builder, n)
 				}
 				player := fbs.PlayerEnd(builder)
 				fbs.SnapshotStart(builder)
@@ -168,6 +180,7 @@ func (s *System) removeClient(conn network.Connection) {
 		client.Unlock()
 		delete(s.clients, conn)
 	}
+	conn.Close()
 	s.logger.Info("client disconnected")
 }
 

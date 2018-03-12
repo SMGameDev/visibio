@@ -3,26 +3,27 @@
     /* Private Variables */
 
     var verbose = true,
-        canvas = null,
-        ctx = null,
-        websocket = null,
-        playing = false,
-        connecting = false,
-        connected = false,
-        loop = null,
-        myPlayer = null,
-        players = [],
-        bullets = [],
-        gameWidth = 4608,
-        gameHeight = 4608;
+      canvas = null,
+      ctx = null,
+      websocket = null,
+      playing = false,
+      connecting = false,
+      connected = false,
+      loop = null,
+      myPlayer = null,
+      players = [],
+      bullets = [],
+      gameWidth = 4608,
+      gameHeight = 4608,
+      heartbeat = null;
 
     // render variables
     var friendColor = "#00B4E0",
-        friendOutline = "#0085A6",
-        enemyColor = "#F04F54",
-        enemyOutline = "#B33B3F",
-        outlineWidth = 4,
-        playerRadius = 27;
+      friendOutline = "#0085A6",
+      enemyColor = "#F04F54",
+      enemyOutline = "#B33B3F",
+      outlineWidth = 4,
+      playerRadius = 27;
 
     var inputs = {
         'up': false,
@@ -35,7 +36,7 @@
 
     /* Rendering */
 
-    function render() {
+    function render () {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (!isConnected()) {
             // render background?
@@ -46,12 +47,12 @@
         drawGrid()
     }
 
-    function drawBackground() {
+    function drawBackground () {
         ctx.fillStyle = '#B8B8B8';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    function drawGrid() {
+    function drawGrid () {
         ctx.fillStyle = '#CCCCCC';
         ctx.fillRect(0, 0, gameWidth, gameHeight);
 
@@ -72,9 +73,9 @@
         }
     }
 
-    function drawPlayer(position, rotation, isMine) {
+    function drawPlayer (position, rotation, isMine) {
         if (typeof position === 'undefined' ||
-            typeof aimAngle === 'undefined') {
+          typeof aimAngle === 'undefined') {
             return;
         }
         if (typeof isMine !== 'boolean') {
@@ -108,20 +109,20 @@
         ctx.restore();
     }
 
-    function drawPlayers() {
+    function drawPlayers () {
         players.forEach(function (player) {
             drawPlayer(player.position, player.rotation, player.id === myPlayer)
         })
     }
 
-    function drawBullets() {
+    function drawBullets () {
         bullets.forEach(function (bullet) {
 
         })
     }
 
     // Draws rounded rectangle on canvas
-    function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+    function roundRect (ctx, x, y, width, height, radius, fill, stroke) {
         if (typeof stroke === 'undefined') {
             stroke = true;
         }
@@ -155,17 +156,17 @@
         }
     }
 
-    function drawMyPlayer() {
+    function drawMyPlayer () {
 
     }
 
     /* Networking Functions */
 
-    function isConnected() {
+    function isConnected () {
         return !!(websocket && websocket.readyState === WebSocket.OPEN);
     }
 
-    function sendSafe(data) {
+    function sendSafe (data) {
         if (!data) return false;
         if (isConnected()) {
             websocket.send(data);
@@ -174,37 +175,43 @@
         return false;
     }
 
-    function handleMessage()
+    function handleMessage (message) {}
 
-    function connect(callback) {
+    function connect (callback) {
         if (isConnected()) // double check
             return true;
         connecting = true;
-        var server = 'ws://localhost:8080'; //todo matchmaking
+        var server = 'localhost:8080'; //todo matchmaking
         websocket = new WebSocket('ws://' + server);
         websocket.binaryType = 'arraybuffer';
         websocket.onopen = function () {
             log("Opened Socket Connection");
             connecting = false;
             connected = true;
+            var builder = new flatbuffers.Builder(1)
+            visibio.Heartbeat.startHeartbeat(builder)
+            var h = visibio.Heartbeat.endHeartbeat(builder)
+            visibio.Message.startMessage(builder)
+            visibio.Message.addPacketType(builder, visibio.Packet.Heartbeat)
+            visibio.Message.addPacket(builder, h)
+            var hb = visibio.Message.endMessage(builder)
+            builder.finish(hb)
+            console.log(builder.asUint8Array())
             heartbeat = setInterval(function () {
-                var buffer = new ArrayBuffer(1);
-                var data = new DataView(buffer);
-                data.setUint8(0, 0);
-                sendSafe(buffer);
+                sendSafe(builder.asUint8Array());
             }, 1000);
-            if (typeof callback == 'function') callback();
+            if (typeof callback === 'function') callback();
         };
         websocket.onclose = function (event) {
             log("Closed Socket Connection (" + event.code + ")");
             if (heartbeat) {
                 clearInterval(heartbeat);
             }
-            reset();
+            // reset();
         };
         websocket.onerror = function () {
             log("Socket Error", true);
-            reset();
+            // reset();
         };
         websocket.onmessage = handleMessage;
     }
@@ -217,16 +224,17 @@
         visibio.Inputs.addDown(builder, inputs.down);
         visibio.Inputs.addUp(builder, inputs.up);
         visibio.Inputs.addRotation(builder, inputs.rotation);
-        visibio.Inputs.addShooting(builder, shooting);
+        visibio.Inputs.addShooting(builder, inputs.shooting);
         var inputsMessage = visibio.Inputs.endInputs(builder);
         visibio.Message.startMessage(builder);
         visibio.Message.addPacketType(builder, visibio.Packet.Inputs);
         visibio.Message.addPacket(builder, inputsMessage);
         var message = visibio.Message.endMessage(builder);
         builder.finish(message);
+        console.log(builder)
         sendSafe(builder.asUint8Array())
-    }, 10, {leading: false});
 
+    }, 10, {leading: false});
 
     /* Global Functions */
 
@@ -282,13 +290,13 @@
 
     window.requestAnimFrame = (function () {
         return window.requestAnimationFrame ||
-            window.webkitRequestAnimationFrame ||
-            window.mozRequestAnimationFrame ||
-            window.oRequestAnimationFrame ||
-            window.msRequestAnimationFrame ||
-            function (callback) {
-                return window.setTimeout(callback, 1000 / 60);
-            };
+          window.webkitRequestAnimationFrame ||
+          window.mozRequestAnimationFrame ||
+          window.oRequestAnimationFrame ||
+          window.msRequestAnimationFrame ||
+          function (callback) {
+              return window.setTimeout(callback, 1000 / 60);
+          };
     })();
 
     window.respawn = function (name) {
@@ -317,5 +325,19 @@
         canvas.height = window.innerHeight;
         render();
     };
+
+    function log (msg, override, prefix) {
+        if (typeof override !== 'boolean')
+            override = verbose;
+        if (typeof prefix !== 'boolean')
+            prefix = true;
+        if (override) {
+            if (prefix) {
+                console.log('[VisibioClient] ' + msg);
+            } else {
+                console.log(msg);
+            }
+        }
+    }
 
 })(window, jQuery, _);

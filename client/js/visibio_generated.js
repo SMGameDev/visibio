@@ -20,11 +20,12 @@ visibio.Entity = {
  */
 visibio.Packet = {
   NONE: 0,
-  Respawn: 1,
-  World: 2,
-  Perception: 3,
-  Inputs: 4,
-  Death: 5
+  Heartbeat: 1,
+  Respawn: 2,
+  World: 3,
+  Perception: 4,
+  Inputs: 5,
+  Death: 6
 };
 
 /**
@@ -997,6 +998,57 @@ visibio.Death.addAlive = function(builder, alive) {
  * @returns {flatbuffers.Offset}
  */
 visibio.Death.endDeath = function(builder) {
+  var offset = builder.endObject();
+  return offset;
+};
+
+/**
+ * @constructor
+ */
+visibio.Heartbeat = function() {
+  /**
+   * @type {flatbuffers.ByteBuffer}
+   */
+  this.bb = null;
+
+  /**
+   * @type {number}
+   */
+  this.bb_pos = 0;
+};
+
+/**
+ * @param {number} i
+ * @param {flatbuffers.ByteBuffer} bb
+ * @returns {visibio.Heartbeat}
+ */
+visibio.Heartbeat.prototype.__init = function(i, bb) {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param {flatbuffers.ByteBuffer} bb
+ * @param {visibio.Heartbeat=} obj
+ * @returns {visibio.Heartbeat}
+ */
+visibio.Heartbeat.getRootAsHeartbeat = function(bb, obj) {
+  return (obj || new visibio.Heartbeat).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param {flatbuffers.Builder} builder
+ */
+visibio.Heartbeat.startHeartbeat = function(builder) {
+  builder.startObject(0);
+};
+
+/**
+ * @param {flatbuffers.Builder} builder
+ * @returns {flatbuffers.Offset}
+ */
+visibio.Heartbeat.endHeartbeat = function(builder) {
   var offset = builder.endObject();
   return offset;
 };
