@@ -39,3 +39,12 @@ See also the list of [contributors](https://github.com/smgamedev/visibio/contrib
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
+## Dev notes
+
+generate flatbuffers accessors--
+
+```bash
+flatc --go-namespace fbs -o . --go protocol/*
+
+```
+

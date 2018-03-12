@@ -1,14 +1,34 @@
 <!DOCTYPE html>
 <head>
-
 </head>
 <body>
-<div id="health"><p>health: 0</p></div>
-<div id="entityCount"><p>entities: 0</p></div>
-<script src="/js/eventemitter.js"></script>
+<div id="menu-wrapper">
+    <div id="menu">
+        <h1>Visibio</h1>
+        <input type="text" tabindex="0" autofocus placeholder="name" id="nameInput" maxlength="20"/>
+        <button onclick="window.respawn(document.getElementById('nameInput').value)">Play</button>
+    </div>
+    <div id="game">
+        <canvas tabindex="1" id="canvas"></canvas>
+    </div>
+</div>
+
+<!--<div id="app">-->
+<!--<p>state: {{state}}</p>-->
+<!--<div v-if="state=='connected'">-->
+<!--<input v-model="name" type="text">-->
+<!--<button v-on:click="respawn">Respawn</button>-->
+<!--</div>-->
+<!--<div v-if="state=='playing'">-->
+<!--<p>id: {{client.game.id}}</p>-->
+<!--<p>name: {{name}}</p>-->
+<!--<p>health: {{client.game.health}}</p>-->
+<!--</div>-->
+<!--</div>-->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
 <script src="https://rawgit.com/google/flatbuffers/master/js/flatbuffers.js"></script>
-<script src="/js/visibio_generated.js"></script>
-<script src="/js/connection.js"></script>
-<script src="js/client.js"></script>
+<script src="js/visibio_generated.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

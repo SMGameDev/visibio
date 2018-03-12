@@ -23,7 +23,8 @@ visibio.Packet = {
   Respawn: 1,
   World: 2,
   Perception: 3,
-  Inputs: 4
+  Inputs: 4,
+  Death: 5
 };
 
 /**
@@ -406,19 +407,10 @@ visibio.Player.prototype.position = function(obj) {
 };
 
 /**
- * @param {visibio.Vector=} obj
- * @returns {visibio.Vector|null}
- */
-visibio.Player.prototype.velocity = function(obj) {
-  var offset = this.bb.__offset(this.bb_pos, 8);
-  return offset ? (obj || new visibio.Vector).__init(this.bb_pos + offset, this.bb) : null;
-};
-
-/**
  * @returns {number}
  */
 visibio.Player.prototype.rotation = function() {
-  var offset = this.bb.__offset(this.bb_pos, 10);
+  var offset = this.bb.__offset(this.bb_pos, 8);
   return offset ? this.bb.readUint16(this.bb_pos + offset) : 0;
 };
 
@@ -427,7 +419,7 @@ visibio.Player.prototype.rotation = function() {
  * @returns {string|Uint8Array|null}
  */
 visibio.Player.prototype.name = function(optionalEncoding) {
-  var offset = this.bb.__offset(this.bb_pos, 12);
+  var offset = this.bb.__offset(this.bb_pos, 10);
   return offset ? this.bb.__string(this.bb_pos + offset, optionalEncoding) : null;
 };
 
@@ -435,7 +427,7 @@ visibio.Player.prototype.name = function(optionalEncoding) {
  * @param {flatbuffers.Builder} builder
  */
 visibio.Player.startPlayer = function(builder) {
-  builder.startObject(5);
+  builder.startObject(4);
 };
 
 /**
@@ -456,18 +448,10 @@ visibio.Player.addPosition = function(builder, positionOffset) {
 
 /**
  * @param {flatbuffers.Builder} builder
- * @param {flatbuffers.Offset} velocityOffset
- */
-visibio.Player.addVelocity = function(builder, velocityOffset) {
-  builder.addFieldStruct(2, velocityOffset, 0);
-};
-
-/**
- * @param {flatbuffers.Builder} builder
  * @param {number} rotation
  */
 visibio.Player.addRotation = function(builder, rotation) {
-  builder.addFieldInt16(3, rotation, 0);
+  builder.addFieldInt16(2, rotation, 0);
 };
 
 /**
@@ -475,7 +459,7 @@ visibio.Player.addRotation = function(builder, rotation) {
  * @param {flatbuffers.Offset} nameOffset
  */
 visibio.Player.addName = function(builder, nameOffset) {
-  builder.addFieldOffset(4, nameOffset, 0);
+  builder.addFieldOffset(3, nameOffset, 0);
 };
 
 /**
@@ -549,10 +533,19 @@ visibio.Bullet.prototype.velocity = function(obj) {
 };
 
 /**
+ * @param {visibio.Vector=} obj
+ * @returns {visibio.Vector|null}
+ */
+visibio.Bullet.prototype.origin = function(obj) {
+  var offset = this.bb.__offset(this.bb_pos, 10);
+  return offset ? (obj || new visibio.Vector).__init(this.bb_pos + offset, this.bb) : null;
+};
+
+/**
  * @param {flatbuffers.Builder} builder
  */
 visibio.Bullet.startBullet = function(builder) {
-  builder.startObject(3);
+  builder.startObject(4);
 };
 
 /**
@@ -577,6 +570,14 @@ visibio.Bullet.addPosition = function(builder, positionOffset) {
  */
 visibio.Bullet.addVelocity = function(builder, velocityOffset) {
   builder.addFieldStruct(2, velocityOffset, 0);
+};
+
+/**
+ * @param {flatbuffers.Builder} builder
+ * @param {flatbuffers.Offset} originOffset
+ */
+visibio.Bullet.addOrigin = function(builder, originOffset) {
+  builder.addFieldStruct(3, originOffset, 0);
 };
 
 /**
@@ -929,6 +930,73 @@ visibio.Inputs.addRotation = function(builder, rotation) {
  * @returns {flatbuffers.Offset}
  */
 visibio.Inputs.endInputs = function(builder) {
+  var offset = builder.endObject();
+  return offset;
+};
+
+/**
+ * @constructor
+ */
+visibio.Death = function() {
+  /**
+   * @type {flatbuffers.ByteBuffer}
+   */
+  this.bb = null;
+
+  /**
+   * @type {number}
+   */
+  this.bb_pos = 0;
+};
+
+/**
+ * @param {number} i
+ * @param {flatbuffers.ByteBuffer} bb
+ * @returns {visibio.Death}
+ */
+visibio.Death.prototype.__init = function(i, bb) {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param {flatbuffers.ByteBuffer} bb
+ * @param {visibio.Death=} obj
+ * @returns {visibio.Death}
+ */
+visibio.Death.getRootAsDeath = function(bb, obj) {
+  return (obj || new visibio.Death).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @returns {flatbuffers.Long}
+ */
+visibio.Death.prototype.alive = function() {
+  var offset = this.bb.__offset(this.bb_pos, 4);
+  return offset ? this.bb.readUint64(this.bb_pos + offset) : this.bb.createLong(0, 0);
+};
+
+/**
+ * @param {flatbuffers.Builder} builder
+ */
+visibio.Death.startDeath = function(builder) {
+  builder.startObject(1);
+};
+
+/**
+ * @param {flatbuffers.Builder} builder
+ * @param {flatbuffers.Long} alive
+ */
+visibio.Death.addAlive = function(builder, alive) {
+  builder.addFieldInt64(0, alive, builder.createLong(0, 0));
+};
+
+/**
+ * @param {flatbuffers.Builder} builder
+ * @returns {flatbuffers.Offset}
+ */
+visibio.Death.endDeath = function(builder) {
   var offset = builder.endObject();
   return offset;
 };

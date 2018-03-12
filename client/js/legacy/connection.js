@@ -1,33 +1,29 @@
 class Connection extends EventEmitter {
     constructor (params) {
-        super()
-        var self = this;
+        super();
         this.addr = params.addr;
-        this.open = false;
-        this.callbacks = params.callbacks;
         let ws = this.ws = new WebSocket("ws://localhost:8080");
         ws.binaryType = 'arraybuffer';
-        ws.onopen = this.onopen;
-        ws.onclose = this.onclose;
-        ws.onerror = this.onerror;
-        ws.onmessage = function (e) {
+        ws.onopen = () => this.onopen();
+        ws.onclose = () => this.onclose();
+        ws.onerror = () => this.onerror();
+        ws.onmessage = (e) => {
             let buf = new Uint8Array(e.data);
-            let m = visibio.Message.getRootAsMessage(new flatbuffers.ByteBuffer(buf), null);
-            self.__handle(m)
+            let message = visibio.Message.getRootAsMessage(new flatbuffers.ByteBuffer(buf), null);
+            this.__handle(message)
         };
     }
 
     onopen () {
-        console.log('connection opened');
+        this.emit('open')
     }
 
     onclose () {
-        console.log('connection closed');
+        this.emit('close')
     }
 
     onerror (e) {
-        console.log('connection error');
-        console.log(e)
+        this.emit('error', e)
     }
 
     __handle (message) {
@@ -56,7 +52,7 @@ class Connection extends EventEmitter {
                 case visibio.Entity.Bullet: {
                     let bullet = snap.entity(new visibio.Bullet());
                     evt.entities.push({
-                        id: bullet.id(),
+                        id: bullet.id().toFloat64(),
                         kind: visibio.Entity.Bullet,
                         x: bullet.position().x(),
                         y: bullet.position().y(),
@@ -68,7 +64,7 @@ class Connection extends EventEmitter {
                 case visibio.Entity.Player: {
                     let player = snap.entity(new visibio.Player());
                     evt.entities.push({
-                        id: player.id(),
+                        id: player.id().toFloat64(),
                         kind: visibio.Entity.Player,
                         x: player.position().x(),
                         y: player.position().y(),
@@ -98,15 +94,13 @@ class Connection extends EventEmitter {
             }
         }
         let evt = {
-            id: world.id(),
-            width: world.width(),
-            height: world.height(),
+            id: world.id().toFloat64(),
             terrain: terrain
         }
         this.emit('world', evt)
     }
 
-    async sendInputs (left, right, up, down, rotation, shooting) {
+    sendInputs (left, right, up, down, rotation, shooting) {
         let builder = new flatbuffers.Builder(8)
         visibio.Inputs.startInputs(builder)
         visibio.Inputs.addLeft(builder, left)
@@ -124,7 +118,7 @@ class Connection extends EventEmitter {
         this.ws.send(builder.asUint8Array())
     }
 
-    async sendRespawn (name) {
+    sendRespawn (name) {
         let builder = new flatbuffers.Builder(name.length * 4)
         let n = builder.createString(name)
         visibio.Respawn.startRespawn(builder)

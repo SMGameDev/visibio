@@ -64,8 +64,21 @@ func (rcv *Bullet) Velocity(obj *Vector) *Vector {
 	return nil
 }
 
+func (rcv *Bullet) Origin(obj *Vector) *Vector {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		x := o + rcv._tab.Pos
+		if obj == nil {
+			obj = new(Vector)
+		}
+		obj.Init(rcv._tab.Bytes, x)
+		return obj
+	}
+	return nil
+}
+
 func BulletStart(builder *flatbuffers.Builder) {
-	builder.StartObject(3)
+	builder.StartObject(4)
 }
 func BulletAddId(builder *flatbuffers.Builder, id uint64) {
 	builder.PrependUint64Slot(0, id, 0)
@@ -75,6 +88,9 @@ func BulletAddPosition(builder *flatbuffers.Builder, position flatbuffers.UOffse
 }
 func BulletAddVelocity(builder *flatbuffers.Builder, velocity flatbuffers.UOffsetT) {
 	builder.PrependStructSlot(2, flatbuffers.UOffsetT(velocity), 0)
+}
+func BulletAddOrigin(builder *flatbuffers.Builder, origin flatbuffers.UOffsetT) {
+	builder.PrependStructSlot(3, flatbuffers.UOffsetT(origin), 0)
 }
 func BulletEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

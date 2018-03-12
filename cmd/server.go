@@ -8,10 +8,17 @@ import (
 	"github.com/gorilla/websocket"
 	"net/http"
 	"log"
-	"github.com/SMGameDev/visibio/net"
-	"github.com/SMGameDev/visibio/game"
+	"github.com/SMGameDev/visibio/networking"
 	"math/big"
 	"go.uber.org/zap"
+	"github.com/jakecoffman/cp"
+	"github.com/SMGameDev/visibio/colliding"
+	"github.com/SMGameDev/visibio/ecs"
+	"github.com/SMGameDev/visibio/perceiving"
+	"github.com/SMGameDev/visibio/moving"
+	"sync"
+	"github.com/google/flatbuffers/go"
+	"github.com/SMGameDev/visibio/network"
 )
 
 var (
@@ -26,6 +33,12 @@ var (
 	} // use default options
 	logger *zap.Logger
 )
+
+var builderPool = &sync.Pool{
+	New: func() interface{} {
+		return flatbuffers.NewBuilder(128)
+	},
+}
 
 // serverCmd represents the server command
 var serverCmd = &cobra.Command{
@@ -45,7 +58,28 @@ var serverCmd = &cobra.Command{
 		}
 		defer logger.Sync()
 
-		g := game.New(width, height, logger)
+		manager := ecs.NewManager()
+		space := cp.NewSpace()
+		space.SetGravity(cp.Vector{0, 0})
+		hw, hh := width/2, height/2
+		sides := []cp.Vector{
+			// outer walls
+			{-hw, -hh}, {-hw, hh}, // left
+			{hw, -hh}, {hw, hh},   // right
+			{-hw, -hh}, {hw, -hh}, // bottom
+			{-hw, hh}, {hw, hh},   // top
+		}
+		for i := 0; i < len(sides); i += 2 {
+			seg := space.AddShape(cp.NewSegment(space.StaticBody, sides[i], sides[i+1], 1))
+			seg.SetElasticity(1)
+			seg.SetFriction(0)
+			seg.SetFilter(cp.NewShapeFilter(0, uint(colliding.Static), uint(cp.WILDCARD_COLLISION_TYPE)))
+		}
+		manager.AddSystem(colliding.New(manager, space))
+		manager.AddSystem(perceiving.New(space, builderPool))
+		manager.AddSystem(moving.New())
+		manager.AddSystem(networking.New(manager, builderPool, logger))
+
 		go func() {
 			ticks := big.NewInt(0)
 			one := big.NewInt(1)
@@ -65,14 +99,14 @@ var serverCmd = &cobra.Command{
 					}
 					delta := float64(t.Sub(start).Nanoseconds() / 1000) // microseconds
 					start = t
-					g.Tick(delta)
+					manager.Update(delta)
 					ticks.Add(ticks, one)
 					logger.Debug("game tick", zap.Int64("tick", ticks.Int64()), zap.Float64("delta", delta))
 				}
 			}
 		}()
 		logger.Info("game started")
-		http.Handle("/", connect(g))
+		http.Handle("/", connect(manager))
 		log.Fatal(http.ListenAndServe(addr, nil))
 	},
 }
@@ -85,15 +119,19 @@ func init() {
 	serverCmd.Flags().DurationVarP(&tick, "tick", "t", 20*time.Millisecond, "Duration of a game tick.")
 }
 
-func connect(g *game.Game) http.Handler {
+func connect(m *ecs.Manager) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			logger.Info("could not upgrade connection: %v\n", zap.Error(err))
 			return
 		}
-		g.Add(net.Websocket(conn))
+		for _, system := range m.Systems() {
+			switch sys := system.(type) {
+			case *networking.System:
+				sys.Add(network.Websocket(conn))
+			}
+		}
 		logger.Info("client connected")
 	})
 }
-

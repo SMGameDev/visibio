@@ -51,21 +51,8 @@ func (rcv *Player) Position(obj *Point) *Point {
 	return nil
 }
 
-func (rcv *Player) Velocity(obj *Vector) *Vector {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
-	if o != 0 {
-		x := o + rcv._tab.Pos
-		if obj == nil {
-			obj = new(Vector)
-		}
-		obj.Init(rcv._tab.Bytes, x)
-		return obj
-	}
-	return nil
-}
-
 func (rcv *Player) Rotation() uint16 {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
 	if o != 0 {
 		return rcv._tab.GetUint16(o + rcv._tab.Pos)
 	}
@@ -73,11 +60,11 @@ func (rcv *Player) Rotation() uint16 {
 }
 
 func (rcv *Player) MutateRotation(n uint16) bool {
-	return rcv._tab.MutateUint16Slot(10, n)
+	return rcv._tab.MutateUint16Slot(8, n)
 }
 
 func (rcv *Player) Name() []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
 	if o != 0 {
 		return rcv._tab.ByteVector(o + rcv._tab.Pos)
 	}
@@ -85,7 +72,7 @@ func (rcv *Player) Name() []byte {
 }
 
 func PlayerStart(builder *flatbuffers.Builder) {
-	builder.StartObject(5)
+	builder.StartObject(4)
 }
 func PlayerAddId(builder *flatbuffers.Builder, id uint64) {
 	builder.PrependUint64Slot(0, id, 0)
@@ -93,14 +80,11 @@ func PlayerAddId(builder *flatbuffers.Builder, id uint64) {
 func PlayerAddPosition(builder *flatbuffers.Builder, position flatbuffers.UOffsetT) {
 	builder.PrependStructSlot(1, flatbuffers.UOffsetT(position), 0)
 }
-func PlayerAddVelocity(builder *flatbuffers.Builder, velocity flatbuffers.UOffsetT) {
-	builder.PrependStructSlot(2, flatbuffers.UOffsetT(velocity), 0)
-}
 func PlayerAddRotation(builder *flatbuffers.Builder, rotation uint16) {
-	builder.PrependUint16Slot(3, rotation, 0)
+	builder.PrependUint16Slot(2, rotation, 0)
 }
 func PlayerAddName(builder *flatbuffers.Builder, name flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(name), 0)
+	builder.PrependUOffsetTSlot(3, flatbuffers.UOffsetT(name), 0)
 }
 func PlayerEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

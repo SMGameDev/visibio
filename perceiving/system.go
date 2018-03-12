@@ -1,76 +1,119 @@
 package perceiving
 
 import (
-	"github.com/SMGameDev/visibio/net"
-	"github.com/jakecoffman/cp"
-	"github.com/SMGameDev/visibio/world"
 	"github.com/google/flatbuffers/go"
+	"github.com/jakecoffman/cp"
+	"github.com/SMGameDev/visibio/colliding"
 	"github.com/SMGameDev/visibio/fbs"
+	"github.com/SMGameDev/visibio/network"
+	"github.com/SMGameDev/visibio/ecs"
+	"math"
+	"sync"
 )
 
 type perceiver struct {
-	conn   net.Connection
+	conn   network.Connection
 	body   *cp.Body
-	health *uint16
-	known  map[net.Perceivable]struct{}
+	health *int
+	known  map[ecs.Index]struct{}
 }
 
 type System struct {
-	perceivers map[uint64]perceiver
-	world      *world.World
+	perceivers   map[ecs.Index]perceiver
+	perceivables map[ecs.Index]network.Perceivable
+	space        *cp.Space
+	pool         *sync.Pool
+	wg           *sync.WaitGroup
 }
 
-func New(world *world.World) *System {
+func New(space *cp.Space, pool *sync.Pool) ecs.System {
 	return &System{
-		perceivers: make(map[uint64]perceiver),
-		world:      world,
+		perceivers:   make(map[ecs.Index]perceiver),
+		perceivables: make(map[ecs.Index]network.Perceivable),
+		space:        space,
+		pool:         pool,
+		wg:           new(sync.WaitGroup),
 	}
 }
 
-func (s *System) Add(id uint64, conn net.Connection, body *cp.Body, health *uint16) {
-	s.perceivers[id] = perceiver{conn: conn, body: body, health: health, known: make(map[net.Perceivable]struct{})}
+func (s *System) AddPerceivable(id ecs.Index, perceivable network.Perceivable) {
+	s.perceivables[id] = perceivable
 }
 
-func (s *System) Remove(id uint64) {
-	delete(s.perceivers, id)
-}
+func (s *System) AddPerceiver(id ecs.Index, conn network.Connection, body *cp.Body, health *int) {
+	s.perceivers[id] = perceiver{conn: conn, body: body, health: health, known: make(map[ecs.Index]struct{})}
+	go func() {
+		builder := s.pool.Get().(*flatbuffers.Builder)
+		builder.Reset()
 
-func (s *System) Update() {
-	for _, p := range s.perceivers {
-		builder := flatbuffers.NewBuilder(100)
-		// find all perceivable entities within viewing range
-		perceivables := make(map[net.Perceivable]struct{}, 0)
-		s.world.Space.BBQuery(
-			cp.NewBBForExtents(p.body.Position(), 200, 200),
-			cp.NewShapeFilter(cp.NO_GROUP, 0, uint(world.Perceivable)),
-			func(shape *cp.Shape, _ interface{}) {
-				perceivables[shape.Body().UserData.(net.Perceivable)] = struct{}{}
-			},
-			nil,
-		)
-		var perceptions = make([]flatbuffers.UOffsetT, 0, len(perceivables)+1)
-		for perceivable := range perceivables {
-			_, known := p.known[perceivable]
-			perceptions = append(perceptions, perceivable.Snapshot(known, builder))
-			p.known[perceivable] = struct{}{}
-		}
-		perceptions = append(perceptions, p.body.UserData.(net.Perceivable).Snapshot(false, builder))
-		fbs.PerceptionStartSnapshotsVector(builder, len(perceptions))
-		for i := len(perceptions) - 1; i >= 0; i-- {
-			builder.PrependUOffsetT(perceptions[i])
-		}
-		snapshots := builder.EndVector(len(perceptions))
-		fbs.PerceptionStart(builder)
-		fbs.PerceptionAddHealth(builder, *p.health)
-		fbs.PerceptionAddSnapshots(builder, snapshots)
-		perception := fbs.PerceptionEnd(builder)
+		fbs.WorldStartMapVector(builder, 0) // todo encode and transmit map
+		m := builder.EndVector(0)
+		fbs.WorldStart(builder)
+		fbs.WorldAddId(builder, id)
+		fbs.WorldAddWidth(builder, 0)
+		fbs.WorldAddHeight(builder, 0)
+		fbs.WorldAddMap(builder, m)
+		world := fbs.WorldEnd(builder)
 		fbs.MessageStart(builder)
-		fbs.MessageAddPacketType(builder, fbs.PacketPerception)
-		fbs.MessageAddPacket(builder, perception)
+		fbs.MessageAddPacketType(builder, fbs.PacketWorld)
+		fbs.MessageAddPacket(builder, world)
 		message := fbs.MessageEnd(builder)
 		builder.Finish(message)
-		//data := make([]byte, 0, len(builder.FinishedBytes()))
-		//copy(data, builder.FinishedBytes())
-		go p.conn.Send(builder.FinishedBytes())
+		conn.Send(builder.FinishedBytes())
+
+		builder.Reset()
+		s.pool.Put(builder)
+	}()
+}
+
+func (s *System) Remove(id ecs.Index) {
+	delete(s.perceivers, id)
+	delete(s.perceivables, id)
+}
+
+func (s *System) Update(dt float64) {
+	for _, p := range s.perceivers {
+		s.wg.Add(1)
+		go func(p perceiver) {
+			builder := s.pool.Get().(*flatbuffers.Builder)
+			builder.Reset()
+			// find all perceivable entities within viewing range
+			targets := map[ecs.Index]struct{}{p.body.UserData.(ecs.Index): {}} // include self
+			s.space.BBQuery(
+				cp.NewBBForExtents(p.body.Position(), 200, 200),
+				cp.NewShapeFilter(cp.NO_GROUP, 0, uint(colliding.Perceivable)),
+				func(shape *cp.Shape, _ interface{}) {
+					targets[shape.Body().UserData.(ecs.Index)] = struct{}{}
+				},
+				nil,
+			)
+			var perceptions = make([]flatbuffers.UOffsetT, 0, len(targets))
+			for target := range targets {
+				_, known := p.known[target]
+				perceptions = append(perceptions, s.perceivables[target].Snapshot(known, builder))
+				if !known { // reduce writes
+					p.known[target] = struct{}{}
+				}
+			}
+			fbs.PerceptionStartSnapshotsVector(builder, len(perceptions))
+			for i := len(perceptions) - 1; i >= 0; i-- {
+				builder.PrependUOffsetT(perceptions[i])
+			}
+			snapshots := builder.EndVector(len(perceptions))
+			fbs.PerceptionStart(builder)
+			fbs.PerceptionAddHealth(builder, uint16(math.Max(float64(*p.health), 0)))
+			fbs.PerceptionAddSnapshots(builder, snapshots)
+			perception := fbs.PerceptionEnd(builder)
+			fbs.MessageStart(builder)
+			fbs.MessageAddPacketType(builder, fbs.PacketPerception)
+			fbs.MessageAddPacket(builder, perception)
+			message := fbs.MessageEnd(builder)
+			builder.Finish(message)
+			p.conn.Send(builder.FinishedBytes())
+			builder.Reset()
+			s.pool.Put(builder)
+			s.wg.Done()
+		}(p)
 	}
+	s.wg.Wait()
 }

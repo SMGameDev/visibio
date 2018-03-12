@@ -1,9 +1,9 @@
 package moving
 
 import (
-	"github.com/SMGameDev/visibio/fbs"
 	"github.com/jakecoffman/cp"
-	"github.com/SMGameDev/visibio/world"
+	"github.com/SMGameDev/visibio/fbs"
+	"github.com/SMGameDev/visibio/ecs"
 )
 
 type movingEntity struct {
@@ -13,18 +13,17 @@ type movingEntity struct {
 }
 
 type System struct {
-	entities map[uint64]movingEntity
-	world    *world.World
+	entities map[ecs.Index]movingEntity
+	world    *cp.Space
 }
 
-func New(world *world.World) *System {
+func New() ecs.System {
 	return &System{
-		entities: make(map[uint64]movingEntity),
-		world:    world,
+		entities: make(map[ecs.Index]movingEntity),
 	}
 }
 
-func (s *System) Add(id uint64, inputs *fbs.Inputs, body *cp.Body, acceleration float64) {
+func (s *System) Add(id ecs.Index, inputs *fbs.Inputs, body *cp.Body, acceleration float64) {
 	s.entities[id] = movingEntity{
 		inputs:       inputs,
 		body:         body,
@@ -32,7 +31,7 @@ func (s *System) Add(id uint64, inputs *fbs.Inputs, body *cp.Body, acceleration 
 	}
 }
 
-func (s *System) Update() {
+func (s *System) Update(dt float64) {
 	for _, entity := range s.entities {
 		if len(entity.inputs.Table().Bytes) > 0 {
 			force := cp.Vector{0, 0}
@@ -56,6 +55,6 @@ func (s *System) Update() {
 	}
 }
 
-func (s *System) Remove(id uint64) {
+func (s *System) Remove(id ecs.Index) {
 	delete(s.entities, id)
 }

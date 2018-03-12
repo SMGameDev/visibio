@@ -52,7 +52,7 @@ EventEmitter.prototype.removeListener = function (event, listener) {
     }
 };
 
-EventEmitter.prototype.emit = function (event) {
+EventEmitter.prototype.emit = function ( event) {
     var i, listeners, length, args = [].slice.call(arguments, 1);
 
     if (typeof this.events[event] === 'object') {
