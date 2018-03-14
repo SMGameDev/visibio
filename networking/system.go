@@ -43,6 +43,11 @@ func (s *System) Update(dt float64) {
 	s.Lock()
 	defer s.Unlock()
 
+	for conn, client := range s.clients {
+		if time.Now().Sub(client.lastPacket)>5*time.Second {
+			s.RemoveClient(conn)
+		}
+	}
 }
 
 func (s *System) Add(conn network.Connection) {
