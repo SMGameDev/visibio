@@ -34,19 +34,19 @@ func (s *System) Add(id ecs.Index, inputs *fbs.Inputs, body *cp.Body, accelerati
 func (s *System) Update(dt float64) {
 	for _, entity := range s.entities {
 		if len(entity.inputs.Table().Bytes) > 0 {
-			force := cp.Vector{0, 0}
+			force := cp.Vector{}
 			if entity.inputs.Left() != entity.inputs.Right() {
 				if entity.inputs.Left() > 0 {
-					force.X = -float64(entity.acceleration)
+					force.X = -(entity.acceleration)
 				} else {
-					force.X = float64(entity.acceleration)
+					force.X = entity.acceleration
 				}
 			}
 			if entity.inputs.Down() != entity.inputs.Up() {
 				if entity.inputs.Down() > 0 {
-					force.Y = -float64(entity.acceleration)
+					force.Y = -(entity.acceleration)
 				} else {
-					force.Y = float64(entity.acceleration)
+					force.Y = entity.acceleration
 				}
 			}
 			entity.body.SetForce(force)

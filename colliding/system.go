@@ -53,6 +53,9 @@ func New(manager *ecs.Manager, space *cp.Space) ecs.System {
 
 func (s *System) Add(id ecs.Index, health *int, body *cp.Body) {
 	s.space.AddBody(body)
+	body.EachShape(func(shape *cp.Shape) {
+		s.space.AddShape(shape)
+	})
 	s.entities[id] = collidingEntity{health: health, body: body}
 }
 
@@ -67,6 +70,9 @@ func (s *System) Update(dt float64) {
 
 func (s *System) Remove(id ecs.Index) {
 	if e, ok := s.entities[id]; ok {
+		e.body.EachShape(func(shape *cp.Shape) {
+			s.space.RemoveShape(shape)
+		})
 		s.space.RemoveBody(e.body)
 		delete(s.entities, id)
 	}

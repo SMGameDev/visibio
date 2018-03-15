@@ -44,7 +44,7 @@ func (s *System) Update(dt float64) {
 	defer s.Unlock()
 
 	for conn, client := range s.clients {
-		if time.Now().Sub(client.lastPacket)>5*time.Second {
+		if time.Now().Sub(client.lastPacket) > 5*time.Second {
 			s.RemoveClient(conn)
 		}
 	}
@@ -128,14 +128,14 @@ func (s *System) handleMessage(conn network.Connection, bytes []byte) {
 func (s *System) newPlayer(conn network.Connection, name string, inputs *fbs.Inputs) ecs.Index {
 	var id = s.manager.NextIndex()
 	var health = 100
-	body := cp.NewBody(0, 0)
+	body := cp.NewBody(1, cp.INFINITY)
 	body.SetPosition(cp.Vector{0, 0})
-	playerShape := cp.NewCircle(body, 28, cp.Vector{})
+	body.UserData = id
+
+	playerShape := body.AddShape(cp.NewCircle(body, 28, cp.Vector{}))
 	playerShape.SetElasticity(0)
 	playerShape.SetFriction(1)
 	playerShape.SetFilter(cp.NewShapeFilter(uint(id), uint(colliding.Perceivable|colliding.Damageable), cp.ALL_CATEGORIES))
-	body.AddShape(playerShape)
-	body.UserData = id
 	for _, system := range s.manager.Systems() {
 		switch sys := system.(type) {
 		case *moving.System:
@@ -149,7 +149,8 @@ func (s *System) newPlayer(conn network.Connection, name string, inputs *fbs.Inp
 				}
 				fbs.PlayerStart(builder)
 				fbs.PlayerAddId(builder, id)
-				fbs.PlayerAddPosition(builder, fbs.CreatePoint(builder, int32(body.Position().X), int32(body.Position().Y)))
+				x, y := int32(body.Position().X), int32(body.Position().Y)
+				fbs.PlayerAddPosition(builder, fbs.CreatePoint(builder, x, y))
 				fbs.PlayerAddRotation(builder, uint16(body.Angle()))
 				if introduce {
 					fbs.PlayerAddName(builder, n)

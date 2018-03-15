@@ -88,7 +88,7 @@ var serverCmd = &cobra.Command{
 			start := time.Now()
 			for t := range ticker.C {
 				select {
-				case <-ticker.C: // if the next tick is immediately available (which means we're lagging)
+				case <-ticker.C: // if the next tick is immediately available (means we're lagging)
 					skipped++
 					break
 				default:
@@ -97,7 +97,7 @@ var serverCmd = &cobra.Command{
 						ticks.Add(ticks, big.NewInt(int64(skipped)))
 						skipped = 0
 					}
-					delta := float64(t.Sub(start).Nanoseconds() / 1000) // microseconds
+					delta := t.Sub(start).Seconds()
 					start = t
 					manager.Update(delta)
 					ticks.Add(ticks, one)
