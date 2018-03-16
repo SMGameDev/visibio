@@ -72,7 +72,7 @@ var serverCmd = &cobra.Command{
 			seg.SetElasticity(1.0)
 			seg.SetFilter(cp.NewShapeFilter(0, uint(colliding.Static), uint(cp.WILDCARD_COLLISION_TYPE)))
 		}
-		space.SetDamping(0.4)
+		space.SetDamping(0.3)
 		manager.AddSystem(colliding.New(manager, space))
 		manager.AddSystem(perceiving.New(space, width, height, builderPool))
 		manager.AddSystem(moving.New())

@@ -130,7 +130,7 @@ function render() {
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(e.x, e.y, 32, 0, 2 * Math.PI);
+        ctx.arc(e.x, e.y, 24, 0, 2 * Math.PI);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();

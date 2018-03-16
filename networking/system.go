@@ -14,7 +14,7 @@ import (
 	"github.com/SMGameDev/visibio/network"
 )
 
-const PlayerForce = 80
+const PlayerForce = 128
 
 type client struct {
 	inputs     *fbs.Inputs
@@ -130,11 +130,11 @@ func (s *System) handleMessage(conn network.Connection, bytes []byte) {
 func (s *System) newPlayer(conn network.Connection, name string, inputs *fbs.Inputs) ecs.Index {
 	var id = s.manager.NextIndex()
 	var health = 100
-	body := cp.NewBody(1, cp.MomentForCircle(1, 0, 32, cp.Vector{}))
+	body := cp.NewBody(1, cp.MomentForCircle(1, 0, 24, cp.Vector{}))
 	body.SetPosition(cp.Vector{0, 0})
 	body.UserData = id
 
-	playerShape := body.AddShape(cp.NewCircle(body, 32.0, cp.Vector{}))
+	playerShape := body.AddShape(cp.NewCircle(body, 24.0, cp.Vector{}))
 	playerShape.SetFriction(0.7)
 	playerShape.SetFilter(cp.NewShapeFilter(uint(id), uint(colliding.Perceivable|colliding.Damageable), cp.ALL_CATEGORIES))
 
