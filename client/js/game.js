@@ -107,11 +107,11 @@ function render() {
   ctx.lineWidth = 0.5;
 
   ctx.beginPath();
-  for (let x = -2*(myPlayer.x % 16); x < canvas.width; x += 32) {
+  for (let x = -(myPlayer.x % 64); x < canvas.width; x += 32) {
     ctx.moveTo(x, 0);
     ctx.lineTo(x, canvas.height);
   }
-  for (let y = -2*(myPlayer.y % 16); y < canvas.height; y += 32) {
+  for (let y = -(myPlayer.y % 64); y < canvas.height; y += 32) {
     ctx.moveTo(0, y);
     ctx.lineTo(canvas.width, y);
   }
@@ -130,7 +130,7 @@ function render() {
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(e.x, e.y, 25, 0, 2 * Math.PI);
+        ctx.arc(e.x, e.y, 32, 0, 2 * Math.PI);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -240,7 +240,7 @@ function handle(bytes) {
       let perception = msg.packet(new visibio.Perception());
       me.health = perception.health();
       entities = [];
-      let known = [];
+      console.log(perception.snapshotsLength())
       for (let i = 0; i < perception.snapshotsLength(); i++) {
         let snapshot = perception.snapshots(i);
         switch (snapshot.entityType()) {
@@ -263,7 +263,6 @@ function handle(bytes) {
                 name: name || "unnamed",
               }
             }
-            known.push(id);
             break;
           }
           case visibio.Entity.Bullet: {
@@ -284,18 +283,16 @@ function handle(bytes) {
               vx: vx,
               vy: vy,
             });
-            if (!metadata[id]) {
+            if (bullet.origin()) {
               metadata[id] = {
                 ox: ox,
                 oy: oy
               }
             }
-            known.push(id);
             break;
           }
         }
       }
-      entities.filter(e => known.findIndex(k => e.id === k) !== -1);
       lastPerception = Date.now();
       break;
     case visibio.Packet.Death:

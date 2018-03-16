@@ -13,7 +13,7 @@ type System interface {
 
 type Manager struct {
 	systems  []System
-	toRemove chan Index
+	toRemove []Index
 	maxId    uint64
 }
 
@@ -26,19 +26,11 @@ func NewManager() *Manager {
 
 func (m *Manager) Update(dt float64) {
 	// first, remove dead entities
-	// kill entities
-remover:
-	for {
-		select {
-		case id := <-m.toRemove:
-			for _, sys := range m.systems {
-				sys.Remove(id)
-			}
-		default:
-			break remover
+	for _, id := range m.toRemove {
+		for _, sys := range m.systems {
+			sys.Remove(id)
 		}
 	}
-
 	for i := 0; i < len(m.systems); i++ {
 		m.systems[i].Update(dt)
 	}
@@ -58,5 +50,5 @@ func (m *Manager) Systems() []System {
 }
 
 func (m *Manager) Remove(i Index) {
-	go func() { m.toRemove <- i }()
+	m.toRemove = append(m.toRemove, i)
 }

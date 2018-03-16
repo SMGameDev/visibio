@@ -79,8 +79,8 @@ func (s *System) Update(dt float64) {
 		// find all perceivable entities within viewing range
 		targets := map[ecs.Index]struct{}{p.body.UserData.(ecs.Index): {}} // include self
 		s.space.BBQuery(
-			cp.NewBBForExtents(p.body.Position(), 200, 200),
-			cp.NewShapeFilter(cp.NO_GROUP, 0, uint(colliding.Perceivable)),
+			cp.NewBBForExtents(p.body.Position(), 32*64, 32*64),
+			cp.NewShapeFilter(cp.NO_GROUP, uint(colliding.Perceiver), uint(colliding.Perceivable)),
 			func(shape *cp.Shape, _ interface{}) {
 				targets[shape.Body().UserData.(ecs.Index)] = struct{}{}
 			},
