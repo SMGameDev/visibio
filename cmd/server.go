@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"time"
 	"github.com/gorilla/websocket"
@@ -22,11 +20,11 @@ import (
 )
 
 var (
-	width    float64 = 192
-	height   float64 = 192
-	addr             = ":8080"
-	tick             = time.Millisecond * 20
-	upgrader         = &websocket.Upgrader{
+	width    uint32 = 192
+	height   uint32 = 192
+	addr            = ":8080"
+	tick            = time.Millisecond * 20
+	upgrader        = &websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true
 		},
@@ -61,7 +59,7 @@ var serverCmd = &cobra.Command{
 		manager := ecs.NewManager()
 		space := cp.NewSpace()
 		space.SetGravity(cp.Vector{0, 0})
-		hw, hh := width*64/2, height*64/2
+		hw, hh := (float64(width)/2)*64, (float64(height)/2)*64
 		sides := []cp.Vector{
 			// outer walls
 			{-hw, -hh}, {-hw, hh}, // left
@@ -71,12 +69,12 @@ var serverCmd = &cobra.Command{
 		}
 		for i := 0; i < len(sides); i += 2 {
 			seg := space.AddShape(cp.NewSegment(space.StaticBody, sides[i], sides[i+1], 1))
-			seg.SetElasticity(1)
-			seg.SetFriction(0)
+			seg.SetElasticity(1.0)
 			seg.SetFilter(cp.NewShapeFilter(0, uint(colliding.Static), uint(cp.WILDCARD_COLLISION_TYPE)))
 		}
+		space.SetDamping(0.4)
 		manager.AddSystem(colliding.New(manager, space))
-		manager.AddSystem(perceiving.New(space, builderPool))
+		manager.AddSystem(perceiving.New(space, width, height, builderPool))
 		manager.AddSystem(moving.New())
 		manager.AddSystem(networking.New(manager, builderPool, logger))
 
@@ -93,7 +91,7 @@ var serverCmd = &cobra.Command{
 					break
 				default:
 					if skipped > 0 {
-						fmt.Printf("skipped %d ticks; is the server lagging?", skipped)
+						logger.Info("lagging", zap.Int("skipped", skipped))
 						ticks.Add(ticks, big.NewInt(int64(skipped)))
 						skipped = 0
 					}
@@ -113,8 +111,8 @@ var serverCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(serverCmd)
-	serverCmd.Flags().Float64Var(&width, "width", 4608, "Set the width of the map. Must be a multiple of 24.")
-	serverCmd.Flags().Float64Var(&height, "height", 4608, "Set the height of the map. Must be a multiple of 24.")
+	serverCmd.Flags().Uint32Var(&width, "width", 192, "Set the width of the map (tiles). Each tile is 64 physics units.")
+	serverCmd.Flags().Uint32Var(&height, "height", 192, "Set the width of the map (tiles). Each tile is 64 physics units.")
 	serverCmd.Flags().StringVar(&addr, "addr", ":8080", "Accept incoming requests at this address.")
 	serverCmd.Flags().DurationVarP(&tick, "tick", "t", 20*time.Millisecond, "Duration of a game tick.")
 }

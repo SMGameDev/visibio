@@ -14,6 +14,8 @@ import (
 	"github.com/SMGameDev/visibio/network"
 )
 
+const PlayerForce = 80
+
 type client struct {
 	inputs     *fbs.Inputs
 	entityId   *ecs.Index // nil if the client has not yet spawned
@@ -44,7 +46,7 @@ func (s *System) Update(dt float64) {
 	defer s.Unlock()
 
 	for conn, client := range s.clients {
-		if time.Now().Sub(client.lastPacket) > 5*time.Second {
+		if time.Now().Sub(client.lastPacket.Add(time.Duration(dt)*time.Second)) > 5*time.Second { // don't penalize for server lag
 			s.RemoveClient(conn)
 		}
 	}
@@ -112,15 +114,15 @@ func (s *System) handleMessage(conn network.Connection, bytes []byte) {
 				client.entityId = &id
 				return
 			case fbs.PacketInputs:
-				s.logger.Info("handling inputs packet")
+				s.logger.Debug("handling inputs packet")
 				client.inputs.Init(packetTable.Bytes, packetTable.Pos)
 			default:
-				s.logger.Info("unknown packet", zap.Uint8("type", message.PacketType()))
+				s.logger.Debug("unknown packet", zap.Uint8("type", message.PacketType()))
 				s.RemoveClient(conn)
 				return
 			}
 		} else {
-			s.logger.Info("malformed packet")
+			s.logger.Debug("malformed packet")
 		}
 	}
 }
@@ -128,18 +130,18 @@ func (s *System) handleMessage(conn network.Connection, bytes []byte) {
 func (s *System) newPlayer(conn network.Connection, name string, inputs *fbs.Inputs) ecs.Index {
 	var id = s.manager.NextIndex()
 	var health = 100
-	body := cp.NewBody(1, cp.INFINITY)
+	body := cp.NewBody(1, cp.MomentForCircle(1, 0, 32, cp.Vector{}))
 	body.SetPosition(cp.Vector{0, 0})
 	body.UserData = id
 
-	playerShape := body.AddShape(cp.NewCircle(body, 28, cp.Vector{}))
-	playerShape.SetElasticity(0)
-	playerShape.SetFriction(1)
+	playerShape := body.AddShape(cp.NewCircle(body, 32.0, cp.Vector{}))
+	playerShape.SetFriction(0.7)
 	playerShape.SetFilter(cp.NewShapeFilter(uint(id), uint(colliding.Perceivable|colliding.Damageable), cp.ALL_CATEGORIES))
+
 	for _, system := range s.manager.Systems() {
 		switch sys := system.(type) {
 		case *moving.System:
-			sys.Add(id, inputs, body, 3)
+			sys.Add(id, inputs, body, PlayerForce)
 		case *perceiving.System:
 			sys.AddPerceiver(id, conn, body, &health)
 			sys.AddPerceivable(id, network.PerceivableFunc(func(introduce bool, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
@@ -149,8 +151,7 @@ func (s *System) newPlayer(conn network.Connection, name string, inputs *fbs.Inp
 				}
 				fbs.PlayerStart(builder)
 				fbs.PlayerAddId(builder, id)
-				x, y := int32(body.Position().X), int32(body.Position().Y)
-				fbs.PlayerAddPosition(builder, fbs.CreatePoint(builder, x, y))
+				fbs.PlayerAddPosition(builder, fbs.CreateVector(builder, float32(body.Position().X), float32(body.Position().Y)))
 				fbs.PlayerAddRotation(builder, uint16(body.Angle()))
 				if introduce {
 					fbs.PlayerAddName(builder, n)

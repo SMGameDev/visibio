@@ -7,9 +7,9 @@ import (
 )
 
 type movingEntity struct {
-	inputs       *fbs.Inputs
-	body         *cp.Body
-	acceleration float64
+	inputs *fbs.Inputs
+	body   *cp.Body
+	force  float64
 }
 
 type System struct {
@@ -23,33 +23,37 @@ func New() ecs.System {
 	}
 }
 
-func (s *System) Add(id ecs.Index, inputs *fbs.Inputs, body *cp.Body, acceleration float64) {
+func (s *System) Add(id ecs.Index, inputs *fbs.Inputs, body *cp.Body, force float64) {
 	s.entities[id] = movingEntity{
-		inputs:       inputs,
-		body:         body,
-		acceleration: acceleration,
+		inputs: inputs,
+		body:   body,
+		force:  force,
 	}
 }
 
 func (s *System) Update(dt float64) {
 	for _, entity := range s.entities {
 		if len(entity.inputs.Table().Bytes) > 0 {
-			force := cp.Vector{}
-			if entity.inputs.Left() != entity.inputs.Right() {
+			var force cp.Vector
+			left := entity.inputs.Left()
+			right := entity.inputs.Right()
+			if left != right {
 				if entity.inputs.Left() > 0 {
-					force.X = -(entity.acceleration)
+					force.X = -(entity.force)
 				} else {
-					force.X = entity.acceleration
+					force.X = entity.force
 				}
 			}
-			if entity.inputs.Down() != entity.inputs.Up() {
+			if entity.inputs.Down() != entity.inputs.Up() { // inverted b/c canvas
 				if entity.inputs.Down() > 0 {
-					force.Y = -(entity.acceleration)
+					force.Y = entity.force
 				} else {
-					force.Y = entity.acceleration
+					force.Y = -(entity.force)
 				}
 			}
 			entity.body.SetForce(force)
+			//delta := force.Sub(entity.body.Velocity())
+			//entity.body.SetVelocityVector(entity.body.Velocity().Add(delta.Clamp(entity.acceleration / dt)))
 			entity.body.SetAngle(float64(entity.inputs.Rotation()))
 		}
 	}

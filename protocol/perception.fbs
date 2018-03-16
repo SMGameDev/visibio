@@ -5,23 +5,18 @@ struct Vector {
   y:float;
 }
 
-struct Point {
-  x:int;
-  y:int;
-}
-
 // enum Team : byte { None = 0, Hunters = 1, Ghosts = 2 }
 
 table Player {
     id:uint64;
-    position:Point;
+    position:Vector;
     rotation:uint16;
     name:string;
 }
 
 table Bullet {
     id:uint64;
-    position:Point;
+    position:Vector;
     velocity:Vector;
     origin:Vector;
 }

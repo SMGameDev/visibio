@@ -54,7 +54,9 @@ func New(manager *ecs.Manager, space *cp.Space) ecs.System {
 func (s *System) Add(id ecs.Index, health *int, body *cp.Body) {
 	s.space.AddBody(body)
 	body.EachShape(func(shape *cp.Shape) {
-		s.space.AddShape(shape)
+		if !s.space.ContainsShape(shape) {
+			s.space.AddShape(shape)
+		}
 	})
 	s.entities[id] = collidingEntity{health: health, body: body}
 }

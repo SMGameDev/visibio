@@ -31,7 +31,9 @@ remover:
 	for {
 		select {
 		case id := <-m.toRemove:
-			m.Remove(id)
+			for _, sys := range m.systems {
+				sys.Remove(id)
+			}
 		default:
 			break remover
 		}
@@ -43,7 +45,7 @@ remover:
 }
 
 func (m *Manager) NextIndex() Index {
-	return Index(atomic.AddUint64(&m.maxId, 1) - 1)
+	return Index(atomic.AddUint64(&m.maxId, 1))
 }
 
 func (m *Manager) AddSystem(system System) {

@@ -38,12 +38,12 @@ func (rcv *Player) MutateId(n uint64) bool {
 	return rcv._tab.MutateUint64Slot(4, n)
 }
 
-func (rcv *Player) Position(obj *Point) *Point {
+func (rcv *Player) Position(obj *Vector) *Vector {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
 		x := o + rcv._tab.Pos
 		if obj == nil {
-			obj = new(Point)
+			obj = new(Vector)
 		}
 		obj.Init(rcv._tab.Bytes, x)
 		return obj

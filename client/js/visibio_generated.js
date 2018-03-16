@@ -305,59 +305,6 @@ visibio.Vector.createVector = function(builder, x, y) {
 /**
  * @constructor
  */
-visibio.Point = function() {
-  /**
-   * @type {flatbuffers.ByteBuffer}
-   */
-  this.bb = null;
-
-  /**
-   * @type {number}
-   */
-  this.bb_pos = 0;
-};
-
-/**
- * @param {number} i
- * @param {flatbuffers.ByteBuffer} bb
- * @returns {visibio.Point}
- */
-visibio.Point.prototype.__init = function(i, bb) {
-  this.bb_pos = i;
-  this.bb = bb;
-  return this;
-};
-
-/**
- * @returns {number}
- */
-visibio.Point.prototype.x = function() {
-  return this.bb.readInt32(this.bb_pos);
-};
-
-/**
- * @returns {number}
- */
-visibio.Point.prototype.y = function() {
-  return this.bb.readInt32(this.bb_pos + 4);
-};
-
-/**
- * @param {flatbuffers.Builder} builder
- * @param {number} x
- * @param {number} y
- * @returns {flatbuffers.Offset}
- */
-visibio.Point.createPoint = function(builder, x, y) {
-  builder.prep(4, 8);
-  builder.writeInt32(y);
-  builder.writeInt32(x);
-  return builder.offset();
-};
-
-/**
- * @constructor
- */
 visibio.Player = function() {
   /**
    * @type {flatbuffers.ByteBuffer}
@@ -399,12 +346,12 @@ visibio.Player.prototype.id = function() {
 };
 
 /**
- * @param {visibio.Point=} obj
- * @returns {visibio.Point|null}
+ * @param {visibio.Vector=} obj
+ * @returns {visibio.Vector|null}
  */
 visibio.Player.prototype.position = function(obj) {
   var offset = this.bb.__offset(this.bb_pos, 6);
-  return offset ? (obj || new visibio.Point).__init(this.bb_pos + offset, this.bb) : null;
+  return offset ? (obj || new visibio.Vector).__init(this.bb_pos + offset, this.bb) : null;
 };
 
 /**
@@ -516,12 +463,12 @@ visibio.Bullet.prototype.id = function() {
 };
 
 /**
- * @param {visibio.Point=} obj
- * @returns {visibio.Point|null}
+ * @param {visibio.Vector=} obj
+ * @returns {visibio.Vector|null}
  */
 visibio.Bullet.prototype.position = function(obj) {
   var offset = this.bb.__offset(this.bb_pos, 6);
-  return offset ? (obj || new visibio.Point).__init(this.bb_pos + offset, this.bb) : null;
+  return offset ? (obj || new visibio.Vector).__init(this.bb_pos + offset, this.bb) : null;
 };
 
 /**

@@ -45,6 +45,6 @@ generate flatbuffers accessors--
 
 ```bash
 flatc --go-namespace fbs -o . --go protocol/*
-
+flatc --gen-all --gen-onefile -o client/js --js protocol/visibio.fbs
 ```
 
