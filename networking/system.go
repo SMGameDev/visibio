@@ -134,7 +134,7 @@ func (s *System) newPlayer(conn network.Connection, name string, inputs *fbs.Inp
 	body.SetPosition(cp.Vector{0, 0})
 	body.UserData = id
 
-	playerShape := body.AddShape(cp.NewCircle(body, 24.0, cp.Vector{}))
+	playerShape := body.AddShape(cp.NewCircle(body, 16.0, cp.Vector{}))
 	playerShape.SetFriction(0.7)
 	playerShape.SetFilter(cp.NewShapeFilter(uint(id), uint(colliding.Perceivable|colliding.Damageable), cp.ALL_CATEGORIES))
 

@@ -117,7 +117,7 @@ function render() {
   }
   ctx.stroke();
 
-  ctx.setTransform(1, 0, 0, 1, -Math.floor((myPlayer.x - canvas.width / 2)), -Math.floor((myPlayer.y - canvas.height / 2)));
+  ctx.setTransform(1, 0, 0, 1, -(myPlayer.x - canvas.width / 2), -(myPlayer.y - canvas.height / 2));
   // drawBackground();
   entities.forEach((e) => {
     ctx.save();
@@ -130,7 +130,7 @@ function render() {
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(e.x, e.y, 24, 0, 2 * Math.PI);
+        ctx.arc(e.x, e.y, 16, 0, 2 * Math.PI);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
