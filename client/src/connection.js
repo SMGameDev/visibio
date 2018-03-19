@@ -8,55 +8,45 @@ class Connection extends EventEmitter {
     this.connected = false;
     this.address = address;
     this.websocket = null;
+    this.sendInputsThrottled = _.throttle((inputs) => {
+      let builder = new flatbuffers.Builder(8);
+      visibio.Inputs.startInputs(builder);
+      visibio.Inputs.addLeft(builder, inputs.left);
+      visibio.Inputs.addRight(builder, inputs.right);
+      visibio.Inputs.addDown(builder, inputs.down);
+      visibio.Inputs.addUp(builder, inputs.up);
+      visibio.Inputs.addRotation(builder, inputs.rotation);
+      visibio.Inputs.addShooting(builder, inputs.shooting);
+      this.websocket.send(message(builder, visibio.Inputs.endInputs(builder), visibio.Packet.Inputs))
+    }, 5, {leading: false});
   }
 
-  async sendRespawn(name) {
-    return new Promise((resolve, reject) => {
-      if (!this.connected) return reject(new Error("tried to respawn while not connected"));
-      let builder = new flatbuffers.Builder(128);
-      name = name || "unknown";
-      let n = builder.createString(name);
-      visibio.Respawn.startRespawn(builder);
-      visibio.Respawn.addName(builder, n);
-      this.websocket.send(message(builder, visibio.Respawn.endRespawn(builder), visibio.Packet.Respawn));
-      resolve();
-    })
+  sendRespawn(name) {
+    if (!this.connected) return new Error("tried to respawn while not connected");
+    let builder = new flatbuffers.Builder(128);
+    name = name || "unknown";
+    let n = builder.createString(name);
+    visibio.Respawn.startRespawn(builder);
+    visibio.Respawn.addName(builder, n);
+    this.websocket.send(message(builder, visibio.Respawn.endRespawn(builder), visibio.Packet.Respawn));
   }
 
-  async sendInputs(inputs) {
-    return new Promise((resolve, reject) => {
-      if (!this.connected) return reject(new Error("tried to send inputs while not connected"));
-      if (!this.sendInputsThrottled) {
-        this.sendInputsThrottled = _.throttle((inputs) => {
-          let builder = new flatbuffers.Builder(8);
-          visibio.Inputs.startInputs(builder);
-          visibio.Inputs.addLeft(builder, inputs.left);
-          visibio.Inputs.addRight(builder, inputs.right);
-          visibio.Inputs.addDown(builder, inputs.down);
-          visibio.Inputs.addUp(builder, inputs.up);
-          visibio.Inputs.addRotation(builder, inputs.rotation);
-          visibio.Inputs.addShooting(builder, inputs.shooting);
-          this.websocket.send(message(builder, visibio.Inputs.endInputs(builder), visibio.Packet.Inputs))
-        }, 5, {leading: false});
-      }
-      this.sendInputsThrottled(inputs)
-    })
+  sendInputs(inputs) {
+    if (!this.connected) return new Error("tried to send inputs while not connected");
+    this.sendInputsThrottled(inputs)
   }
 
-  async connect() {
+  connect() {
     return new Promise((resolve, reject) => {
       this.websocket = new WebSocket(this.address);
       this.websocket.binaryType = 'arraybuffer';
       this.websocket.onopen = () => {
         this.connected = true;
-        resolve();
       };
       this.websocket.onerror = () => {
-        reject();
         this.connected = false;
       };
       this.websocket.onclose = () => {
-        reject();
         this.connected = false;
       };
       this.websocket.onmessage = (event) => {
@@ -65,7 +55,7 @@ class Connection extends EventEmitter {
     })
   }
 
-  isOpen() {
+  isConnected() {
     return this.websocket !== null && this.connected;
   }
 
@@ -147,3 +137,5 @@ function message(builder, packet, type) {
   builder.finish(msg);
   return builder.asUint8Array()
 }
+
+export default Connection;
