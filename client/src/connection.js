@@ -66,7 +66,7 @@ class Connection extends EventEmitter {
   }
 
   isOpen() {
-    return this.websocket !== null && this.state;
+    return this.websocket !== null && this.connected;
   }
 
   __handle(data) {
