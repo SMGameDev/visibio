@@ -19,3 +19,7 @@
 //   }).appendTo($stage[0]);
 //
 // }
+
+import game from 'game.js';
+
+let game = new game.Game();

@@ -1,3 +1,5 @@
+import render from 'renderer/renderer.js';
+
 class Game {
   constructor() {
     this.conn = null;
@@ -8,8 +10,7 @@ class Game {
       entities: [],
       metadata: {}
     }
-    this.canvas = document.getElementById('#canvas');
-    this.ctx = this.canvas.getContext('2d');
+    this.renderer = new render.Renderer();
   }
 
   render() {
