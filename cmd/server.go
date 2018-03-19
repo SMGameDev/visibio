@@ -10,13 +10,14 @@ import (
 	"math/big"
 	"go.uber.org/zap"
 	"github.com/jakecoffman/cp"
-	"github.com/SMGameDev/visibio/colliding"
+	"github.com/SMGameDev/visibio/collision"
 	"github.com/SMGameDev/visibio/ecs"
-	"github.com/SMGameDev/visibio/perceiving"
-	"github.com/SMGameDev/visibio/moving"
+	"github.com/SMGameDev/visibio/perception"
+	"github.com/SMGameDev/visibio/movement"
 	"sync"
 	"github.com/google/flatbuffers/go"
 	"github.com/SMGameDev/visibio/network"
+	"github.com/SMGameDev/visibio/terrain"
 )
 
 var (
@@ -56,26 +57,51 @@ var serverCmd = &cobra.Command{
 		}
 		defer logger.Sync()
 
-		manager := ecs.NewManager()
+		// generate the terrain
+		logger.Info("generating terrain")
+		w := terrain.NewCellular(int(width), int(height))
+		w.Randomize(.45)
+		for i := 0; i < 5; i++ {
+			w.Create()
+		}
+		w.Connect(0)
+
+		// set up physics
 		space := cp.NewSpace()
+		// > rules
+		space.SetDamping(0.3)
 		space.SetGravity(cp.Vector{0, 0})
-		hw, hh := (float64(width)/2)*64, (float64(height)/2)*64
+		// > outer boundaries
+		wallFilter := cp.NewShapeFilter(0, uint(collision.Wall), uint(cp.WILDCARD_COLLISION_TYPE))
+		pwidth := float64(width) * 64
+		pheight := float64(height) * 64
 		sides := []cp.Vector{
 			// outer walls
-			{-hw, -hh}, {-hw, hh}, // left
-			{hw, -hh}, {hw, hh},   // right
-			{-hw, -hh}, {hw, -hh}, // bottom
-			{-hw, hh}, {hw, hh},   // top
+			{0, 0}, {0, pheight},
+			{pwidth, 0}, {pwidth, pheight},
+			{0, 0}, {pwidth, 0},
+			{0, pheight}, {pwidth, pheight},
 		}
 		for i := 0; i < len(sides); i += 2 {
 			seg := space.AddShape(cp.NewSegment(space.StaticBody, sides[i], sides[i+1], 1))
 			seg.SetElasticity(1.0)
-			seg.SetFilter(cp.NewShapeFilter(0, uint(colliding.Static), uint(cp.WILDCARD_COLLISION_TYPE)))
+			seg.SetFilter(wallFilter)
 		}
-		space.SetDamping(0.3)
-		manager.AddSystem(colliding.New(manager, space))
-		manager.AddSystem(perceiving.New(space, width, height, builderPool))
-		manager.AddSystem(moving.New())
+		// > walls
+		for x := 0; x < int(w.Width()); x++ {
+			for y := 0; y < int(w.Height()); y++ {
+				if w.Cells()[x][y] > 0 {
+					wall := space.AddShape(cp.NewBox2(space.StaticBody, cp.NewBBForExtents(cp.Vector{float64(1+x)*64 - 32, float64(1+y)*64 - 32}, 32, 32), 0))
+					wall.SetFilter(wallFilter)
+				}
+			}
+		}
+
+		// entity-component-system
+		manager := ecs.NewManager()
+		manager.AddSystem(collision.New(manager, space))
+		manager.AddSystem(perception.New(space, w, builderPool))
+		manager.AddSystem(movement.New(manager))
 		manager.AddSystem(networking.New(manager, builderPool, logger))
 
 		go func() {

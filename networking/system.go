@@ -8,13 +8,14 @@ import (
 	"github.com/google/flatbuffers/go"
 	"go.uber.org/zap"
 	"github.com/jakecoffman/cp"
-	"github.com/SMGameDev/visibio/colliding"
-	"github.com/SMGameDev/visibio/moving"
-	"github.com/SMGameDev/visibio/perceiving"
+	"github.com/SMGameDev/visibio/collision"
+	"github.com/SMGameDev/visibio/movement"
+	"github.com/SMGameDev/visibio/perception"
 	"github.com/SMGameDev/visibio/network"
 )
 
-const PlayerForce = 128
+const PlayerMovementForce = 256
+const PlayerShootingCooldown = 1 * time.Second
 
 type client struct {
 	inputs     *fbs.Inputs
@@ -56,8 +57,14 @@ func (s *System) Add(conn network.Connection) {
 	s.Lock()
 	defer s.Unlock()
 
+	builder := flatbuffers.NewBuilder(0)
+	fbs.InputsStart(builder)
+	inp := fbs.InputsEnd(builder)
+	builder.Finish(inp)
+	inputs := new(fbs.Inputs)
+	inputs.Init(builder.Bytes, inp)
 	s.clients[conn] = &client{
-		inputs:     new(fbs.Inputs),
+		inputs:     inputs,
 		entityId:   nil,
 		lastPacket: time.Now(),
 		Mutex:      new(sync.Mutex),
@@ -136,15 +143,17 @@ func (s *System) newPlayer(conn network.Connection, name string, inputs *fbs.Inp
 
 	playerShape := body.AddShape(cp.NewCircle(body, 16.0, cp.Vector{}))
 	playerShape.SetFriction(0.7)
-	playerShape.SetFilter(cp.NewShapeFilter(uint(id), uint(colliding.Perceivable|colliding.Damageable), cp.ALL_CATEGORIES))
+	playerShape.SetFilter(cp.NewShapeFilter(uint(id), uint(collision.Player), uint(collision.Bullet|collision.Wall)))
 
 	for _, system := range s.manager.Systems() {
 		switch sys := system.(type) {
-		case *moving.System:
-			sys.Add(id, inputs, body, PlayerForce)
-		case *perceiving.System:
-			sys.AddPerceiver(id, conn, body, &health)
-			sys.AddPerceivable(id, network.PerceivableFunc(func(introduce bool, builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+		case *movement.System:
+			sys.Add(id, movement.ControllerFunc(func() (up, down, left, right bool, rotation float64) {
+				return inputs.Up() > 0, inputs.Down() > 0, inputs.Left() > 0, inputs.Right() > 0, float64(inputs.Rotation())
+			}), body, PlayerMovementForce)
+		case *perception.System:
+			sys.AddPerceiver(id, conn, &health)
+			sys.AddPerceivable(id, perception.PerceivableFunc(func(builder *flatbuffers.Builder, introduce bool) flatbuffers.UOffsetT {
 				var n flatbuffers.UOffsetT
 				if introduce {
 					n = builder.CreateString(name)
@@ -162,7 +171,7 @@ func (s *System) newPlayer(conn network.Connection, name string, inputs *fbs.Inp
 				fbs.SnapshotAddEntity(builder, player)
 				return fbs.SnapshotEnd(builder)
 			}))
-		case *colliding.System:
+		case *collision.System:
 			sys.Add(id, &health, body)
 		}
 	}

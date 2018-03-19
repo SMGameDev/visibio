@@ -1,4 +1,4 @@
-package colliding
+package collision
 
 import (
 	"github.com/jakecoffman/cp"
@@ -6,19 +6,10 @@ import (
 )
 
 const (
-	Static      cp.CollisionType = 1 << (iota + 1)
-	Damager
-	Damageable
-	Perceiver
-	Perceivable
+	Wall   uint = 1 << (iota + 1)
+	Bullet
+	Player
 )
-
-type Terrain interface {
-	Width() int
-	Height() int
-	// Map returns the terrain map where Map()[x][y] is the value of the cell at (x,y) where (0,0) is the top-left corner.
-	Map() [][]uint8
-}
 
 type collidingEntity struct {
 	health *int
@@ -37,15 +28,16 @@ func New(manager *ecs.Manager, space *cp.Space) ecs.System {
 		space:    space,
 		entities: make(map[ecs.Index]collidingEntity),
 	}
-	dmg := space.NewCollisionHandler(Damageable, Damager)
-	dmg.PreSolveFunc = func(arb *cp.Arbiter, space *cp.Space, userData interface{}) bool {
+	bullets := space.NewCollisionHandler(cp.CollisionType(Player), cp.CollisionType(Bullet))
+	bullets.PreSolveFunc = func(arb *cp.Arbiter, space *cp.Space, userData interface{}) bool {
 		a, b := arb.Bodies()
-		damageableIndex := a.UserData.(ecs.Index)
-		damagerIndex := b.UserData.(ecs.Index)
-		damageable := system.entities[damageableIndex]
-		damager := system.entities[damagerIndex]
-		*damageable.health -= *damager.health
-		*damager.health = 0
+		playerIndex := a.UserData.(ecs.Index)
+		bulletIndex := b.UserData.(ecs.Index)
+		player := system.entities[playerIndex]
+		bullet := system.entities[bulletIndex]
+		*player.health -= *bullet.health
+		*bullet.health = 0
+		system.manager.Remove(bulletIndex)
 		return true // bullets should transfer velocity
 	}
 	return system

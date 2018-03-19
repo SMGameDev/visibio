@@ -3,6 +3,11 @@ package network
 import (
 	"github.com/gorilla/websocket"
 	"sync"
+	"errors"
+)
+
+var (
+	ErrClosed = errors.New("network: connection closed")
 )
 
 type websocketConn struct {
@@ -21,14 +26,17 @@ func Websocket(conn *websocket.Conn) Connection {
 }
 
 func (c *websocketConn) Send(data []byte) error {
-	for {
-		select {
-		case <-c.done:
-			return nil
-		case c.out <- data:
-			return nil
+	go func() {
+		for {
+			select {
+			case <-c.done:
+				return
+			case c.out <- data:
+				return
+			}
 		}
-	}
+	}()
+	return nil
 }
 
 func (c *websocketConn) writer() {
@@ -49,7 +57,7 @@ func (c *websocketConn) Read() ([]byte, error) {
 	for {
 		select {
 		case <-c.done:
-			return nil, websocket.ErrCloseSent
+			return nil, ErrClosed
 		case message := <-c.in:
 			return message, nil
 		}
@@ -62,15 +70,16 @@ func (c *websocketConn) reader() {
 		if err != nil {
 			return
 		}
-	pushToIn:
-		for {
-			select {
-			case <-c.done:
-				return
-			case c.in <- message:
-				break pushToIn
+		go func() {
+			for {
+				select {
+				case <-c.done:
+					return
+				case c.in <- message:
+					return
+				}
 			}
-		}
+		}()
 	}
 }
 

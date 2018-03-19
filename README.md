@@ -48,3 +48,12 @@ flatc --go-namespace fbs -o . --go protocol/*
 flatc --gen-all --gen-onefile -o client/js --js protocol/visibio.fbs
 ```
 
+### Physics
+
+| Object | Category | Mask  |
+| ------ | -------- | ----- |
+| Wall   | 1        | 1,2,3 |
+| Bullet | 2        | 1,3   |
+| Player | 3        | 1,2   |
+
+Groups are used to prevent collisions between "friend" groups (teammates).

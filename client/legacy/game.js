@@ -1,13 +1,11 @@
 var state = 0, // 0 = not connected/connecting, 1 = connected, 2 = playing, 3 = dead
   entities = [],
   metadata = {},
-  map = [],
+  map = null,
   me = {
     id: null,
     health: null
-  },
-  mapWidth = null,
-  mapHeight = null;
+  };
 
 let websocket = null,
   inputs = {
@@ -26,9 +24,12 @@ let websocket = null,
 let loop = null;
 
 function reset() {
-  mapWidth = mapHeight = me.id = me.health = websocket = null;
-  entities = map = [];
-  metadata = {};
+  map = null;
+  me.id = null;
+  me.health = null;
+  websocket = null;
+  entities = null;
+  metadata = null;
   lastPerception = null;
   inputs = {
     up: false,
@@ -59,37 +60,10 @@ function showCanvas() {
   resizeCanvas();
 }
 
-/* Game */
-
-window.onMoveKeys = function (upMode, event) {
-  if (state !== 2) {
-    return;
-  }
-  switch (event.keyCode) {
-    case 87: // w key
-      inputs.up = !upMode;
-      sendInputs();
-      break;
-    case 65: // a key
-      inputs.left = !upMode;
-      sendInputs();
-      break;
-    case 83: // s key
-      inputs.down = !upMode;
-      sendInputs();
-      break;
-    case 68: // d key
-      inputs.right = !upMode;
-      sendInputs();
-      break;
-  }
-};
-
 /* Rendering */
 
 let overlayContainer = null,
   nameEl = null,
-  // two = null,
   canvas = null,
   ctx = null;
 
@@ -100,6 +74,7 @@ function render() {
   if (!myPlayer) {
     return
   }
+  // draw grid
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -116,9 +91,11 @@ function render() {
     ctx.lineTo(canvas.width, y);
   }
   ctx.stroke();
-
   ctx.setTransform(1, 0, 0, 1, -(myPlayer.x - canvas.width / 2), -(myPlayer.y - canvas.height / 2));
-  // drawBackground();
+
+  // draw walls
+  drawWalls(myPlayer);
+// draw entities
   entities.forEach((e) => {
     ctx.save();
     switch (e.type) {
@@ -141,15 +118,11 @@ function render() {
     }
     ctx.restore();
   })
-  // ctx.translate(-((canvas.width / 2.0) - myPlayer.x), -((canvas.height / 2.0) - myPlayer.y));
-  // let rect = viewport.getBoundingClientRect();
-  // two.scene.translation.set((-mapWidth / 2) + (rect.width / 2) - me.x, (-mapHeight / 2) + (rect.height / 2) - me.y);
-  // two.render();
 }
 
-function worldToLocal(x, y) {
-  return {x: x + (mapWidth / 2), y: y + mapHeight / 2}
-}
+// function worldToLocal(x, y) {
+//   return {x: x + (render.js.js.width*64 / 2), y: y + render.js.js.height*64 / 2}
+// }
 
 function resizeCanvas() {
   canvas.width = window.innerWidth;
@@ -157,29 +130,70 @@ function resizeCanvas() {
   render();
 }
 
-// function drawBackground() {
-//   two.scene.fill = '#ededed'
-//   // draw grid
-//   let linesArr = [];
-//   linesArr.push();
-//   for (let x = 10; x < mapWidth; x += 17) {
-//     linesArr.push(two.makeLine(x, 0, x, mapHeight));
-//   }
-//   for (let y = 10; y < mapHeight; y += 17) {
-//     linesArr.push(two.makeLine(0, y, mapWidth, y));
-//   }
-//   let group = two.makeGroup(linesArr);
-//   group.stroke = '#C2C2C2';
-//   group.linewidth = 0.5;
-//   // draw borders
-//   let top = two.makeLine(mapWidth, 0, 0, 0);
-//   let left = two.makeLine(0, 0, 0, mapHeight);
-//   let bottom = two.makeLine(0, mapHeight, mapWidth, mapHeight);
-//   let right = two.makeLine(mapWidth, mapHeight, mapWidth, 0);
-//   let borders = two.makeGroup(top, left, bottom, right);
-//   borders.stroke = '#7c7c7c';
-//   borders.linewidth = 3;
-// }
+function drawWalls(myPlayer) {
+  let screen = [];
+
+  let x = Math.floor(-(myPlayer.x - canvas.width) / map.width);
+  let y = Math.floor(-(myPlayer.y - canvas.height) / map.height);
+  let xspan = Math.ceil(canvas.width / 64); // how many to draw on screen
+  let yspan = Math.ceil(canvas.height / 64);
+
+  // first pass: determine tiles
+  for (let a = x; a < a + xspan; a++) {
+    screen[x] = [];
+    for (let b = y; b < b + yspan; b++) {
+      let tile = map.get(x, y);
+      screen[x][y] = tile
+    }
+  }
+
+  ctx.strokeStyle = '##636e72';
+  ctx.lineWidth = 3;
+  // second pass: render.js
+  for (let a = x; a < a + xspan; a++) {
+    for (let b = y; b < b + yspan; b++) {
+      if (!screen[a][b]) break;
+      let top = true;
+      let left = true;
+      let bottom = true;
+      let right = true;
+
+      if (a + 1 < xspan && screen[a + 1][b] > 0) {
+        right = false;
+      }
+      if (a - 1 > 0 && screen[a - 1][b] > 0) {
+        left = false;
+      }
+      if (b + 1 < yspan && screen[a][b + 1] > 0) {
+        bottom = false;
+      }
+      if (b - 1 > 0 && screen[a][b - 1] > 0) {
+        top = false;
+      }
+      ctx.beginPath();
+      ctx.moveTo(x + a * 64, y + b * 64);
+      if (top) {
+        ctx.lineTo(x + (a + 1) * 64, y + b * 64);
+      } else {
+        ctx.moveTo(x + (a + 1) * 64, y + b * 64);
+      }
+      if (right) {
+        ctx.lineTo(x + (a + 1) * 64, y + (b + 1) * 64);
+      } else {
+        ctx.moveTo(x + (a + 1) * 64, y + (b + 1) * 64);
+      }
+      if (bottom) {
+        ctx.lineTo(x + a * 64, y + (b + 1) * 64)
+      } else {
+        ctx.moveTo(x + a * 64, y + (b + 1) * 64);
+      }
+      if (left) {
+        ctx.lineTo(x + a * 64, y + b * 64)
+      }
+      ctx.stroke()
+    }
+  }
+}
 
 
 /* Networking */
@@ -215,14 +229,6 @@ function connect(addr) {
   }
 }
 
-// function newPlayerBody(v) {
-//   let circle = two.makeCircle(v.x, v.y, 17);
-//   circle.fill = '#ababab';
-//   circle.stroke = '#000000';
-//   circle.linewidth = 2;
-//   return circle
-// }
-
 function handle(bytes) {
   let msg = visibio.Message.getRootAsMessage(new flatbuffers.ByteBuffer(bytes));
   switch (msg.packetType()) {
@@ -230,17 +236,15 @@ function handle(bytes) {
       console.log('received world packet');
       state = 2;
       let world = msg.packet(new visibio.World());
-      mapWidth = world.width() * 64;
-      mapHeight = world.height() * 64;
       me.id = world.id().toFloat64();
       showCanvas();
-      // todo process the map--walls, etc.
+      // todo process the render.js.js--walls, etc.
       break;
     case visibio.Packet.Perception:
       let perception = msg.packet(new visibio.Perception());
       me.health = perception.health();
       entities = [];
-      console.log(perception.snapshotsLength())
+      console.log(perception.snapshotsLength());
       for (let i = 0; i < perception.snapshotsLength(); i++) {
         let snapshot = perception.snapshots(i);
         switch (snapshot.entityType()) {
@@ -342,6 +346,30 @@ function send(data) {
 function isConnected() {
   return websocket && websocket.readyState === WebSocket.OPEN;
 }
+
+window.onMoveKeys = function (upMode, event) {
+  if (state !== 2) {
+    return;
+  }
+  switch (event.keyCode) {
+    case 87: // w key
+      inputs.up = !upMode;
+      sendInputs();
+      break;
+    case 65: // a key
+      inputs.left = !upMode;
+      sendInputs();
+      break;
+    case 83: // s key
+      inputs.down = !upMode;
+      sendInputs();
+      break;
+    case 68: // d key
+      inputs.right = !upMode;
+      sendInputs();
+      break;
+  }
+};
 
 $(document).ready(() => {
   window.requestAnimFrame = (function () {
