@@ -10,24 +10,16 @@ class Game {
       me: null,
       health: 0,
       entities: [],
-      metadata: {}
+      metadata: {},
+      source: null
     }
     this.renderer = new render.Renderer();
     this.ready = true;
   }
 
   update() {
-    if(this.state != 1 && this.ready) {
+    if(this.ready) {
       this.renderer.drawState(this.state);
-    }
-    else if (this.state == 1) {
-      this.respawn().then(result => {
-        // render respawn
-        this.renderer.drawRespawn();
-      },
-      err => {
-        console.log(err);
-      });
     }
   }
 
@@ -39,6 +31,7 @@ class Game {
       this.state.me = id;
       this.state.source = source;
       this.state.health = 100;
+      this.renderer.setState(this.state);
     });
     this.conn.on('perception', (health, entities, metadata) => {
       this.state.health = health;
@@ -48,6 +41,13 @@ class Game {
     });
     this.conn.on('death', () => {
       this.state = 1
+      this.respawn().then(result => {
+        // render respawn
+        this.renderer.drawRespawn();
+      },
+      err => {
+        console.log(err);
+      });
     })
   }
 
@@ -65,7 +65,6 @@ class Game {
   }
 }
 
-<<<<<<< HEAD
 /*
   RENDERING
  */
