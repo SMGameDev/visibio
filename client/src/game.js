@@ -1,7 +1,9 @@
 import render from 'renderer/renderer.js';
+import _ from 'underscore';
 
 class Game {
   constructor(address) {
+    this.ready = false;
     this.conn = new Connection(address);
     this.status = 0; // 0=not connected, 1=connected, 2=playing
     this.state = {
@@ -11,6 +13,22 @@ class Game {
       metadata: {}
     }
     this.renderer = new render.Renderer();
+    this.ready = true;
+  }
+
+  update() {
+    if(this.state != 1 && this.ready) {
+      this.renderer.drawState(this.state);
+    }
+    else if (this.state == 1) {
+      this.respawn().then(result => {
+        // render respawn
+        this.renderer.drawRespawn();
+      },
+      err => {
+        console.log(err);
+      });
+    }
   }
 
     this.conn.connect().then(() => {
@@ -26,6 +44,7 @@ class Game {
       this.state.health = health;
       this.state.entities = entities;
       _.extend(this.state.metadata, metadata)
+      this.update();
     });
     this.conn.on('death', () => {
       this.state = 1
