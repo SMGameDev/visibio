@@ -1,5 +1,5 @@
-import render from 'renderer/renderer.js';
-import _ from 'underscore';
+import * as render from 'renderer/renderer.js';
+import * as _ from 'underscore';
 
 class Game {
   constructor(address) {
