@@ -1,9 +1,8 @@
 const path = require('path');
-const HardSourceWebpackPlugin = require('hard-source-webpack-plugin');
-
+const HappyPack = require('happypack');
 
 module.exports = {
-  entry: ['babel-polyfill','./src/index.js'],
+  entry: ['babel-polyfill', './src/index.js'],
   output: {
     filename: 'bundle.js',
     path: path.resolve(__dirname, 'dist')
@@ -12,19 +11,22 @@ module.exports = {
     rules: [
       {test: /\.png$/, loader: "url-loader?mimetype=image/png"},
       {
-        test: /\.js$/,
-        // exclude: /(node_modules|bower_components)/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-env'],
-            exclude: /node_modules/
-          }
-        }
-      }]
+        test: /.js$/,
+        use: 'happypack/loader',
+        exclude: /node_modules/
+      }
+    ]
   },
   plugins: [
-    new HardSourceWebpackPlugin()
+    new HappyPack({
+      // 3) re-add the loaders you replaced above in #1:
+      loaders: [{
+        loader: 'babel-loader',
+        options: {
+          presets: ['@babel/preset-env']
+        }
+      }]
+    })
   ],
   devtool: 'source-map'
 };

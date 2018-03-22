@@ -27,5 +27,4 @@ import $ from 'jquery'
 let game = new Game('ws://localhost:8080/');
 $(document).ready(() => {
   let renderer = new Renderer(game);
-
 });

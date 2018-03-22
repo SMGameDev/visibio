@@ -1,9 +1,9 @@
 import Source from './map.js';
 import EventEmitter from 'eventemitter3';
 import _ from 'underscore';
-import flatbuffers from 'flatbuffers';
 
-// import visibio from './visibio_generated.js';
+const flatbuffers = require('exports-loader?flatbuffers!flatbuffers');
+const visibio = require('exports-loader?visibio!./visibio_generated.js');
 
 class Connection extends EventEmitter {
   constructor(address) {
@@ -12,7 +12,7 @@ class Connection extends EventEmitter {
     this.address = address;
     this.websocket = null;
     this.sendInputsThrottled = _.throttle((inputs) => {
-      let builder = flatbuffers.Builder(8);
+      let builder = new flatbuffers.Builder(8);
       visibio.Inputs.startInputs(builder);
       visibio.Inputs.addLeft(builder, inputs.left);
       visibio.Inputs.addRight(builder, inputs.right);
@@ -52,7 +52,7 @@ class Connection extends EventEmitter {
       this.websocket.binaryType = 'arraybuffer';
       this.websocket.onopen = () => {
         this.connected = true;
-        this.heartbeatLoop = setInterval(heartbeat, 1000);
+        this.heartbeatLoop = setInterval(() => this.sendHeartbeat(), 1000);
         resolve()
       };
       this.websocket.onerror = () => {
