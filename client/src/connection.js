@@ -1,6 +1,9 @@
-import Source from 'map.js';
-import EventEmitter from 'eventemitter';
-import visibio from 'visibio_generated.js';
+import Source from './map.js';
+import EventEmitter from 'eventemitter3';
+import _ from 'underscore';
+import flatbuffers from 'flatbuffers';
+
+// import visibio from './visibio_generated.js';
 
 class Connection extends EventEmitter {
   constructor(address) {
@@ -9,7 +12,7 @@ class Connection extends EventEmitter {
     this.address = address;
     this.websocket = null;
     this.sendInputsThrottled = _.throttle((inputs) => {
-      let builder = new flatbuffers.Builder(8);
+      let builder = flatbuffers.Builder(8);
       visibio.Inputs.startInputs(builder);
       visibio.Inputs.addLeft(builder, inputs.left);
       visibio.Inputs.addRight(builder, inputs.right);
@@ -19,6 +22,9 @@ class Connection extends EventEmitter {
       visibio.Inputs.addShooting(builder, inputs.shooting);
       this.websocket.send(message(builder, visibio.Inputs.endInputs(builder), visibio.Packet.Inputs))
     }, 5, {leading: false});
+    let builder = new flatbuffers.Builder(8);
+    visibio.Heartbeat.startHeartbeat(builder);
+    this.heartbeat = message(builder, visibio.Heartbeat.endHeartbeat(builder), visibio.Packet.Heartbeat)
   }
 
   sendRespawn(name) {
@@ -36,18 +42,26 @@ class Connection extends EventEmitter {
     this.sendInputsThrottled(inputs)
   }
 
+  sendHeartbeat() {
+    this.websocket.send(this.heartbeat);
+  }
+
   connect() {
     return new Promise((resolve, reject) => {
       this.websocket = new WebSocket(this.address);
       this.websocket.binaryType = 'arraybuffer';
       this.websocket.onopen = () => {
         this.connected = true;
+        this.heartbeatLoop = setInterval(heartbeat, 1000);
+        resolve()
       };
       this.websocket.onerror = () => {
         this.connected = false;
+        reject(new Error("error connecting"))
       };
       this.websocket.onclose = () => {
         this.connected = false;
+        clearInterval(this.heartbeatLoop)
       };
       this.websocket.onmessage = (event) => {
         this.__handle(event.data)

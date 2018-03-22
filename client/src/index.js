@@ -20,6 +20,12 @@
 //
 // }
 
-import game from 'game.js';
+import Game from './game.js';
+import Renderer from './renderer.js';
+import $ from 'jquery'
 
-let game = new game.Game();
+let game = new Game('ws://localhost:8080/');
+$(document).ready(() => {
+  let renderer = new Renderer(game);
+
+});

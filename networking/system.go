@@ -194,9 +194,9 @@ func (s *System) removeClient(conn network.Connection) {
 		client.entityId = nil
 		client.Unlock()
 		delete(s.clients, conn)
+		conn.Close()
+		s.logger.Info("client disconnected")
 	}
-	conn.Close()
-	s.logger.Info("client disconnected")
 }
 
 func (s *System) Remove(i ecs.Index) {

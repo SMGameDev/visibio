@@ -9,7 +9,6 @@ import (
 	"sync"
 	"github.com/SMGameDev/visibio/network"
 	"github.com/SMGameDev/visibio/terrain"
-	"fmt"
 )
 
 type perceivingEntity struct {

@@ -1092,5 +1092,3 @@ visibio.Message.finishMessageBuffer = function(builder, offset) {
   builder.finish(offset);
 };
 
-// Exports for Node.src and RequireJS
-this.visibio = visibio;
