@@ -4,7 +4,7 @@
   "description": "Web client for visibio, a 2D browser-based MMO.",
   "main": "src/index.js",
   "repository": "https://github.com/SMGameDev/visibio",
-  "author": "Meyer Zinn et al.",
+  "author": "Meyer Zinn and Jordan et al.",
   "license": "MIT",
   "dependencies": {
     "flatbuffers": "^1.8.0",
@@ -19,10 +19,9 @@
     "babel-polyfill": "^6.26.0",
     "eventemitter3": "^3.0.1",
     "exports-loader": "^0.7.0",
-    "happypack": "^5.0.0-beta.1",
+    "file-loader": "^1.1.11",
     "image-webpack-loader": "^4.2.0",
     "path": "^0.12.7",
-    "url-loader": "^1.0.1",
     "webpack": "^4.1.1",
     "webpack-cli": "^2.0.12"
   },

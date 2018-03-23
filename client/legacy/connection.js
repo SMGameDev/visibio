@@ -3,7 +3,7 @@ import EventEmitter from 'eventemitter3';
 import _ from 'underscore';
 
 const flatbuffers = require('exports-loader?flatbuffers!flatbuffers');
-const visibio = require('exports-loader?visibio!./visibio_generated.js');
+const visibio = require('exports-loader?visibio!../src/visibio_generated.js');
 
 class Connection extends EventEmitter {
   constructor(address) {
@@ -27,26 +27,42 @@ class Connection extends EventEmitter {
     this.heartbeat = message(builder, visibio.Heartbeat.endHeartbeat(builder), visibio.Packet.Heartbeat)
   }
 
-  sendRespawn(name) {
-    if (!this.connected) return new Error("tried to respawn while not connected");
-    let builder = new flatbuffers.Builder(128);
-    name = name || "unknown";
-    let n = builder.createString(name);
-    visibio.Respawn.startRespawn(builder);
-    visibio.Respawn.addName(builder, n);
-    this.websocket.send(message(builder, visibio.Respawn.endRespawn(builder), visibio.Packet.Respawn));
+  async sendRespawn(name) {
+    return new Promise((resolve, reject) => {
+      if (!this.isConnected()) return reject(new Error("tried to respawn while not connected"));
+      let builder = new flatbuffers.Builder(128);
+      name = name || "unknown";
+      let n = builder.createString(name);
+      visibio.Respawn.startRespawn(builder);
+      visibio.Respawn.addName(builder, n);
+      this.websocket.send(message(builder, visibio.Respawn.endRespawn(builder), visibio.Packet.Respawn));
+      resolve();
+    })
   }
 
-  sendInputs(inputs) {
-    if (!this.connected) return new Error("tried to send inputs while not connected");
-    this.sendInputsThrottled(inputs)
+  async sendInputs(inputs) {
+    return new Promise((resolve, reject) => {
+      if (!this.isConnected()) return reject(new Error("tried to _send inputs while not connected"));
+      this.sendInputsThrottled(inputs);
+      resolve()
+    })
   }
 
   sendHeartbeat() {
-    this.websocket.send(this.heartbeat);
+    return new Promise((resolve, reject) => {
+      if (!this.isConnected()) return reject(new Error("tried to _send heartbeat while not connected"));
+      this.send(this.heartbeat);
+    })
   }
 
-  connect() {
+  async send(data) {
+    return new Promise((resolve) => {
+      this.websocket.send(data)
+      resolve()
+    })
+  }
+
+  async connect() {
     return new Promise((resolve, reject) => {
       this.websocket = new WebSocket(this.address);
       this.websocket.binaryType = 'arraybuffer';
@@ -78,7 +94,7 @@ class Connection extends EventEmitter {
     switch (msg.packetType()) {
       case visibio.Packet.World: {
         let world = msg.packet(new visibio.World());
-        this.emit('spawn',
+        this.emit('world',
           world.id().toFloat64(),
           new Source(world.mapArray(), world.width(), world.height())
         );
@@ -129,9 +145,11 @@ class Connection extends EventEmitter {
           }
         }
         this.emit('perception',
-          health,
-          entities,
-          metadata
+          {
+            health: health,
+            entities: entities,
+            metadata: metadata
+          }
         );
         break;
       }

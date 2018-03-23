@@ -16,25 +16,25 @@ class Renderer {
     $(window).resize(() => {
       this.resize(window.width, window.height);
     });
-    this.game = game;
+    this.state = game;
     this.playing = false;
-    this.game.on('connected', () => {
-      this.game.respawn('meyer').then(() => {
-        console.log('spawned');
-        this.app.stage.removeChildren();
-        this.renderables = [];
-        this.__drawBackground();
-        this.show()
-      }).catch((e) => {
+    this.state.on('connected', () => {
+      this.state.respawn('meyer').catch((e) => {
         console.log(e)
       });
     });
-    this.game.on('died', () => {
+    this.state.on('playing', () => {
+      this.app.stage.removeChildren();
+      this.renderables = [];
+      this.__drawBackground();
+      this.show()
+    })
+    this.state.on('died', () => {
       this.hide()
     });
     this.app.ticker.add((dt) => {
-      let delta = Date.now() - (this.game.state.lastPerception || Date.now()); // time since last perception (to apply velocity)
-      let me = this.game.state.entities.find((e) => e.id === this.game.state.me)[0];
+      let delta = Date.now() - (this.state.state.lastPerception || Date.now()); // time since last perception (to apply velocity)
+      let me = this.state.state.entities.find((e) => e.id === this.state.state.me)[0];
       if (!me) {
         return this.hide();
       }
@@ -59,7 +59,7 @@ class Renderer {
   }
 
   __drawBackground() {
-    let source = this.game.state.source;
+    let source = this.state.state.source;
     let xspan = source.width();
     let yspan = source.height();
 

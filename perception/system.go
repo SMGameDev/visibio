@@ -45,8 +45,11 @@ func (s *System) AddPerceiver(id ecs.Index, conn network.Connection, health *int
 		builder := s.pool.Get().(*flatbuffers.Builder)
 		builder.Reset()
 		fbs.WorldStartMapVector(builder, int(s.t.Width()*s.t.Height()))
-		for x := s.t.Width() - 1; x >= 0; x-- {
-			for y := s.t.Height() - 1; y >= 0; y-- {
+		//fmt.Println("dims: ", s.t.Width(), " ", s.t.Height())
+		for x := int(s.t.Width()) - 1; x >= 0; x-- {
+			//fmt.Println("row ", x, " ", s.t.Cells()[x])
+			for y := int(s.t.Height()) - 1; y >= 0; y-- {
+				//fmt.Println(x, " ", y)
 				builder.PrependByte(s.t.Cells()[x][y])
 			}
 		}
