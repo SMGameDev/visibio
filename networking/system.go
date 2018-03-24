@@ -119,6 +119,7 @@ func (s *System) handleMessage(conn network.Connection, bytes []byte) {
 				respawnPacket.Init(packetTable.Bytes, packetTable.Pos)
 				var id = s.newPlayer(conn, string(respawnPacket.Name()), client.inputs)
 				client.entityId = &id
+				s.logger.Info("client respawned")
 				return
 			case fbs.PacketInputs:
 				s.logger.Debug("handling inputs packet")

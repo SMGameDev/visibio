@@ -33,7 +33,7 @@ class Client {
       ws.binaryType = 'arraybuffer';
       ws.onopen = () => {
         this.status = 1;
-        this.heartbeatLoop = setInterval(() => this._sendHeartbeat(), 1000);
+        this.heartbeatLoop = setInterval(() => this._sendHeartbeat(), this.params.heartbeatLoop);
         this._sendInputs();
         resolve()
       };
@@ -47,7 +47,6 @@ class Client {
       };
       ws.onclose = () => {
         this.status = 0;
-        reject();
       }
     })
   }
@@ -60,15 +59,28 @@ class Client {
       visibio.Respawn.addName(builder, n);
       this._send(Client._message(builder, visibio.Respawn.endRespawn(builder), visibio.Packet.Respawn))
         .then(() => {
-          this._tryResolveWorld(resolve);
+
         })
         .catch(reject)
+      this._spawncb = () => {
+        resolve(this._getStatesGenerator);
+        this._spawncb = undefined
+      };
     })
   }
 
-  _tryResolveWorld(resolve) {
-    if (this.world !== null) return resolve(this.world);
-    setImmediate(this._tryResolveWorld, resolve)
+  * _getStatesGenerator() {
+    yield this.world;
+    while (this.status === 2) {
+      if (this.states.length > 0) {
+        yield this.states.shift()
+      } else {
+        yield this.state;
+      }
+    }
+    if (this.status === 3) {
+      return this.lifetime
+    }
   }
 
   sendInputs(up, down, left, right, shooting, rotation) {
@@ -91,19 +103,6 @@ class Client {
 
   isConnected() {
     return this.websocket !== null && !(this.websocket.readyState === this.websocket.CLOSED || this.websocket.readyState === this.websocket.CLOSING) && this.status > 0;
-  }
-
-  * getStates() {
-    while (this.status === 2) {
-      if (this.states.length > 0) {
-        yield this.states.shift()
-      } else {
-        yield this.state;
-      }
-    }
-    if (this.status === 3) {
-      return this.lifetime
-    }
   }
 
   _reset() {
@@ -180,6 +179,9 @@ class Client {
           entities: [],
           metadata: {}
         };
+        if (this._spawncb !== undefined) {
+          this._spawncb()
+        }
         break;
       }
       case visibio.Packet.Perception: {
