@@ -16,25 +16,25 @@ class Renderer {
     $(window).resize(() => {
       this.resize(window.width, window.height);
     });
-    this.state = game;
+    this._perception = game;
     this.playing = false;
-    this.state.on('connected', () => {
-      this.state.respawn('meyer').catch((e) => {
+    this._perception.on('connected', () => {
+      this._perception.respawn('meyer').catch((e) => {
         console.log(e)
       });
     });
-    this.state.on('playing', () => {
+    this._perception.on('playing', () => {
       this.app.stage.removeChildren();
       this.renderables = [];
       this.__drawBackground();
       this.show()
     })
-    this.state.on('died', () => {
+    this._perception.on('died', () => {
       this.hide()
     });
     this.app.ticker.add((dt) => {
-      let delta = Date.now() - (this.state.state.lastPerception || Date.now()); // time since last perception (to apply velocity)
-      let me = this.state.state.entities.find((e) => e.id === this.state.state.me)[0];
+      let delta = Date.now() - (this._perception._perception.lastPerception || Date.now()); // time since last _perception (to apply velocity)
+      let me = this._perception._perception.entities.find((e) => e.id === this._perception._perception.me)[0];
       if (!me) {
         return this.hide();
       }
@@ -59,7 +59,7 @@ class Renderer {
   }
 
   __drawBackground() {
-    let source = this.state.state.source;
+    let source = this._perception._perception.source;
     let xspan = source.width();
     let yspan = source.height();
 

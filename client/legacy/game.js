@@ -5,8 +5,8 @@ import _ from 'underscore';
 class Game {
   constructor(address) {
     this.conn = new Connection(address);
-    this.status = 0; // 0=not connected, 1=connected, 2=playing
-    this.state = {
+    this._status = 0; // 0=not connected, 1=connected, 2=playing
+    this._perception = {
       me: null,
       health: 0,
       entities: [],
@@ -15,35 +15,35 @@ class Game {
     };
 
     this.conn.connect().then(() => {
-      this.status = 1;
-      this.conn.on('world', (id, source) => {
+      this._status = 1;
+      this.conn.on('_world', (id, source) => {
 
       })
     }).catch((e) => {
       throw e;
     });
     this.conn.clear
-    this.conn.on('world', ({id, source}) => {
-      this.status = 2;
-      this.state.me = id;
-      this.state.source = source;
+    this.conn.on('_world', ({id, source}) => {
+      this._status = 2;
+      this._perception.me = id;
+      this._perception.source = source;
     });
-    this.conn.on('perception', (health, entities, metadata) => {
-      this.state.health = health;
-      this.state.entities = entities;
-      _.extend(this.state.metadata, metadata);
-      this.state.lastPerception = Date.now();
+    this.conn.on('_perception', (health, entities, metadata) => {
+      this._perception.health = health;
+      this._perception.entities = entities;
+      _.extend(this._perception._metadata, metadata);
+      this._perception.lastPerception = Date.now();
     });
     this.conn.on('death', () => {
-      this.status = 1;
-      this.state.entities = [];
-      this.state.metadata = {};
-      this.state.lastPerception = null;
+      this._status = 1;
+      this._perception.entities = [];
+      this._perception._metadata = {};
+      this._perception.lastPerception = null;
     });
   }
 
   respawn(name) {
-    if (this.status !== 1) {
+    if (this._status !== 1) {
       throw new Error("cannot respawn while not connected or alive")
     }
     let err = this.conn.sendRespawn(name);

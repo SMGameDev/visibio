@@ -10,7 +10,7 @@ class Connection extends EventEmitter {
     super();
     this.connected = false;
     this.address = address;
-    this.websocket = null;
+    this._websocket = null;
     this.sendInputsThrottled = _.throttle((inputs) => {
       let builder = new flatbuffers.Builder(8);
       visibio.Inputs.startInputs(builder);
@@ -20,11 +20,11 @@ class Connection extends EventEmitter {
       visibio.Inputs.addUp(builder, inputs.up);
       visibio.Inputs.addRotation(builder, inputs.rotation);
       visibio.Inputs.addShooting(builder, inputs.shooting);
-      this.websocket.send(message(builder, visibio.Inputs.endInputs(builder), visibio.Packet.Inputs))
+      this._websocket.send(message(builder, visibio.Inputs.endInputs(builder), visibio.Packet.Inputs))
     }, 5, {leading: false});
     let builder = new flatbuffers.Builder(8);
     visibio.Heartbeat.startHeartbeat(builder);
-    this.heartbeat = message(builder, visibio.Heartbeat.endHeartbeat(builder), visibio.Packet.Heartbeat)
+    this._heartbeat = message(builder, visibio.Heartbeat.endHeartbeat(builder), visibio.Packet.Heartbeat)
   }
 
   async sendRespawn(name) {
@@ -35,14 +35,14 @@ class Connection extends EventEmitter {
       let n = builder.createString(name);
       visibio.Respawn.startRespawn(builder);
       visibio.Respawn.addName(builder, n);
-      this.websocket.send(message(builder, visibio.Respawn.endRespawn(builder), visibio.Packet.Respawn));
+      this._websocket.send(message(builder, visibio.Respawn.endRespawn(builder), visibio.Packet.Respawn));
       resolve();
     })
   }
 
   async sendInputs(inputs) {
     return new Promise((resolve, reject) => {
-      if (!this.isConnected()) return reject(new Error("tried to _send inputs while not connected"));
+      if (!this.isConnected()) return reject(new Error("tried to _send _inputs while not connected"));
       this.sendInputsThrottled(inputs);
       resolve()
     })
@@ -50,43 +50,43 @@ class Connection extends EventEmitter {
 
   sendHeartbeat() {
     return new Promise((resolve, reject) => {
-      if (!this.isConnected()) return reject(new Error("tried to _send heartbeat while not connected"));
-      this.send(this.heartbeat);
+      if (!this.isConnected()) return reject(new Error("tried to _send _heartbeat while not connected"));
+      this.send(this._heartbeat);
     })
   }
 
   async send(data) {
     return new Promise((resolve) => {
-      this.websocket.send(data)
+      this._websocket.send(data)
       resolve()
     })
   }
 
   async connect() {
     return new Promise((resolve, reject) => {
-      this.websocket = new WebSocket(this.address);
-      this.websocket.binaryType = 'arraybuffer';
-      this.websocket.onopen = () => {
+      this._websocket = new WebSocket(this.address);
+      this._websocket.binaryType = 'arraybuffer';
+      this._websocket.onopen = () => {
         this.connected = true;
-        this.heartbeatLoop = setInterval(() => this.sendHeartbeat(), 1000);
+        this._heartbeatLoop = setInterval(() => this.sendHeartbeat(), 1000);
         resolve()
       };
-      this.websocket.onerror = () => {
+      this._websocket.onerror = () => {
         this.connected = false;
         reject(new Error("error connecting"))
       };
-      this.websocket.onclose = () => {
+      this._websocket.onclose = () => {
         this.connected = false;
-        clearInterval(this.heartbeatLoop)
+        clearInterval(this._heartbeatLoop)
       };
-      this.websocket.onmessage = (event) => {
+      this._websocket.onmessage = (event) => {
         this.__handle(event.data)
       }
     })
   }
 
   isConnected() {
-    return this.websocket !== null && this.connected;
+    return this._websocket !== null && this.connected;
   }
 
   __handle(data) {
@@ -94,7 +94,7 @@ class Connection extends EventEmitter {
     switch (msg.packetType()) {
       case visibio.Packet.World: {
         let world = msg.packet(new visibio.World());
-        this.emit('world',
+        this.emit('_world',
           world.id().toFloat64(),
           new Source(world.mapArray(), world.width(), world.height())
         );
@@ -144,11 +144,11 @@ class Connection extends EventEmitter {
             }
           }
         }
-        this.emit('perception',
+        this.emit('_perception',
           {
             health: health,
             entities: entities,
-            metadata: metadata
+            _metadata: metadata
           }
         );
         break;

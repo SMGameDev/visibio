@@ -233,7 +233,7 @@ function handle(bytes) {
   let msg = visibio.Message.getRootAsMessage(new flatbuffers.ByteBuffer(bytes));
   switch (msg.packetType()) {
     case visibio.Packet.World:
-      console.log('received world packet');
+      console.log('received _world packet');
       state = 2;
       let world = msg.packet(new visibio.World());
       me.id = world.id().toFloat64();
