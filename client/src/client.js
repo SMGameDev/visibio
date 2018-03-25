@@ -68,6 +68,7 @@ class Client extends EventEmitter {
       ws.onclose = () => {
         this._status = 0;
         this.emit('disconnected')
+        this.close()
       }
     })
   }
