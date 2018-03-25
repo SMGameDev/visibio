@@ -1,15 +1,18 @@
 # visibio
+
 Visibio is a 2d, browser-based MMO game being developed by the St. Mark's Game Dev club.
 
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-### Prerequisites
+### Server
+
+#### Prerequisites
 
 You should already have installed Go. If not, you can find instructions to do so at https://golang.org/doc/install.
 
-### Installation
+#### Installation
 
 To install the visibio server, run the following command:
 
@@ -19,7 +22,7 @@ go get github.com/smgamedev/visibio
 
 This should install a binary called `visibio` wherever your Go environment is configured to do so.
 
-### Running the Server
+#### Running the Server
 
 To run the game server for development, simply run the command:
 
@@ -28,6 +31,32 @@ visibio server
 ```
 
 The command line interface includes documentation of commands and flags.
+
+### Client
+
+#### Prerequisites
+
+You need a copy of Node 8.0.0+ (we use v8.10.0 for development) and NPM or yarn for dependencies.
+
+To install dependencies, run:
+
+```bash
+# npm
+npm install
+# yarn
+yarn
+```
+
+#### Running the Dev Server
+
+To run the development server, you can use:
+
+```bash
+# npm
+npm run dev
+# yarn
+yarn run dev
+```
 
 ## Authors
 
