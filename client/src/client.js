@@ -74,6 +74,7 @@ class Client extends EventEmitter {
   }
 
   async respawn(name) {
+    this._reset()
     let builder = new flatbuffers.Builder(80);
     let n = builder.createString(name);
     visibio.Respawn.startRespawn(builder);
