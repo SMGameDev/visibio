@@ -7,3 +7,5 @@ class Renderer {
     this._worldState = world;
   }
 }
+
+export default Renderer;
