@@ -15,6 +15,7 @@ type perceivingEntity struct {
 	conn   network.Connection
 	health *int
 	known  map[ecs.Index]struct{}
+	open   bool
 }
 
 type System struct {
@@ -23,6 +24,7 @@ type System struct {
 	space        *cp.Space
 	pool         *sync.Pool
 	t            terrain.Map
+	*sync.RWMutex
 }
 
 func New(space *cp.Space, t terrain.Map, pool *sync.Pool) ecs.System {
@@ -32,15 +34,20 @@ func New(space *cp.Space, t terrain.Map, pool *sync.Pool) ecs.System {
 		space:        space,
 		pool:         pool,
 		t:            t,
+		RWMutex:      new(sync.RWMutex),
 	}
 }
 
 func (s *System) AddPerceivable(id ecs.Index, perceivable Perceivable) {
+	s.Lock()
 	s.perceivables[id] = perceivable
+	s.Unlock()
 }
 
 func (s *System) AddPerceiver(id ecs.Index, conn network.Connection, health *int) {
-	s.perceivers[id] = perceivingEntity{conn: conn, health: health, known: make(map[ecs.Index]struct{})}
+	s.Lock()
+	s.perceivers[id] = perceivingEntity{conn: conn, health: health, known: make(map[ecs.Index]struct{}), open: false}
+	s.Unlock()
 	go func() {
 		builder := s.pool.Get().(*flatbuffers.Builder)
 		builder.Reset()
@@ -66,25 +73,36 @@ func (s *System) AddPerceiver(id ecs.Index, conn network.Connection, health *int
 		message := fbs.MessageEnd(builder)
 		builder.Finish(message)
 		conn.Send(builder.FinishedBytes())
-
+		s.RLock()
+		p, ok := s.perceivers[id]
+		if ok {
+			p.open = true
+			s.perceivers[id] = p
+		}
+		s.RUnlock()
 		builder.Reset()
 		s.pool.Put(builder)
 	}()
 }
 
 func (s *System) Remove(id ecs.Index) {
+	s.Lock()
 	delete(s.perceivers, id)
 	delete(s.perceivables, id)
+	s.Unlock()
 }
 
 func (s *System) Update(dt float64) {
+	s.RLock()
+	defer s.RUnlock()
+
 	s.space.EachBody(func(b *cp.Body) {
 		id, ok := b.UserData.(ecs.Index)
 		if !ok {
 			return
 		}
 		perceiver, ok := s.perceivers[id]
-		if !ok {
+		if !ok || !perceiver.open {
 			return
 		}
 		builder := s.pool.Get().(*flatbuffers.Builder)
