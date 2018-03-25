@@ -2,3 +2,4 @@
 *.code-workspace
 visibio
 node_modules
+client/dist/assets
