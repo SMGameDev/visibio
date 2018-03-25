@@ -47,7 +47,6 @@ class Client extends EventEmitter {
     return this._lifetime
   }
 
-
   connect() {
     return new Promise((resolve, reject) => {
       if (this.connected) return reject(new Error("already connected"));
