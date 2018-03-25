@@ -87,3 +87,5 @@ class InputHandler extends EventEmitter {
     // TODO add rotation handler
   }
 }
+
+export default Game;
