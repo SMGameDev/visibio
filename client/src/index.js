@@ -15,4 +15,6 @@ client.connect()
 
 import Game from './game.js';
 
+sessionStorage.username = 'bob';
+
 let game = new Game(sessionStorage.username);
