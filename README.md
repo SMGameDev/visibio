@@ -60,7 +60,9 @@ yarn run dev
 
 ## Authors
 
-* **Meyer Zinn** - *Server*
+* **Meyer Zinn** - *Lead Developer*
+* Jordan Gaines - *Client*
+* Perry Naseck - *Student Advisor*
 
 See also the list of [contributors](https://github.com/smgamedev/visibio/contributors) who participated in this project.
 
