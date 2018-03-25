@@ -1,4 +1,5 @@
 import Client from './client.js';
+import Renderer from './renderer.js';
 import EventEmitter from 'eventemitter3';
 import $ from 'jquery';
 
@@ -8,21 +9,24 @@ class Game {
     this._renderer = new Renderer();
 
     // setup handlers
-    this._client.on('connected', () => this._connected = true);
     this._client.on('spawned', () => {
       this._renderer.world = this._client.world;
     });
-    this._client.on('perception', () => this.update(client.entities));
+    this._client.on('perception', () => this.update(this._client.entities));
     this._client.on('disconnected', () => {
       this._connected = false;
     });
 
+    // connect to the client
+    this._client.connect().then(() => {
+      // spawn in my mans
+      this._client.respawn(name);
+      this._connected = true
+    }).catch(e => console.log(e));
+
     // input handler
     this._inputHandler = new InputHandler();
     this._inputHandler.on('input', inputs => this._client.setInputs(inputs));
-
-    // spawn in my mans
-    this._client.respawn(name);
   }
 
   update(entities) {
@@ -35,8 +39,7 @@ class Game {
 class InputHandler extends EventEmitter {
   // input handler constructor
   constructor() {
-    // stage div
-    this._stage = document.getElementById('stage');
+    super();
     // keyboard state to emit
     this._state = {
       up: false,
