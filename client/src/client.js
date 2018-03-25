@@ -170,10 +170,8 @@ class Client extends EventEmitter {
 
   _handle(data) {
     let msg = visibio.Message.getRootAsMessage(new flatbuffers.ByteBuffer(new Uint8Array(data)));
-    console.log(msg, msg.packetType());
     switch (msg.packetType()) {
       case visibio.Packet.World: {
-        console.log('handling world packet');
         let world = msg.packet(new visibio.World());
         this._world = {
           terrain: new Terrain(world.mapArray(), world.width(), world.height()),
