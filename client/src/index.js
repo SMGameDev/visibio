@@ -1,4 +1,4 @@
-import Client from './client.js'
+/*import Client from './client.js'
 
 let client = new Client({});
 
@@ -11,4 +11,8 @@ client.connect()
     console.log("connected; spawning...");
     return client.respawn('meyer')
   })
-  .catch((e) => console.log(e));
+  .catch((e) => console.log(e));*/
+
+import Game from './game.js';
+
+let game = new Game(sessionStorage.username);
