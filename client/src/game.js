@@ -26,13 +26,12 @@ class Game {
 
     // input handler
     this._inputHandler = new InputHandler();
-    this._inputHandler.on('input', inputs => this._client.setInputs(inputs));
+    this._inputHandler.on('input', () => this._client.setInputs(this._inputHandler.inputs));
   }
 
   update(entities) {
     // ensure connected
     if (!this._connected) return;
-    console.log(entities);
   }
 }
 
@@ -88,6 +87,10 @@ class InputHandler extends EventEmitter {
     });
 
     // TODO add rotation handler
+  }
+
+  get inputs() {
+    return this._state;
   }
 }
 
