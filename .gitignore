@@ -3,4 +3,4 @@
 visibio
 node_modules
 client/dist
-!index.html
+!*.html
