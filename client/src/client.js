@@ -60,6 +60,7 @@ class Client extends EventEmitter {
       };
       ws.onerror = (e) => {
         this._status = 0;
+        this.close()
         reject(new Error("error connecting"))
       };
       ws.onmessage = (e) => {
