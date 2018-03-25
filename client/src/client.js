@@ -1,6 +1,5 @@
 import _ from "underscore";
 import EventEmitter from 'eventemitter3';
-import Queue from 'queuejs';
 
 const flatbuffers = require('exports-loader?flatbuffers!flatbuffers');
 const visibio = require('exports-loader?visibio!./visibio_generated.js');
@@ -10,20 +9,19 @@ class Client extends EventEmitter {
     super();
     this._params = _.defaults(params, {
       address: 'ws://localhost:8080',
-      inputFrequency: 10, // ms between inputs sent (if they have changed)
       heartbeatFrequency: 1000, // ms between heartbeats
     });
-    // _inputs
-    this._inputsQueue = new Queue();
-    this._inputsQueueProcessor = null;
-    // _heartbeat
+    // inputs
+    this._inputs = {};
+    this._inputsProcessor = null;
+    // heartbeat
     let builder = new flatbuffers.Builder(8);
     visibio.Heartbeat.startHeartbeat(builder);
     this._heartbeat = message(builder, visibio.Heartbeat.endHeartbeat(builder), visibio.Packet.Heartbeat);
     this._heartbeatLoop = null;
-    // game _perception
+    // status
     this._status = 0; // 0 = not connected, 1 = connected, 2 = playing, 3 = dead
-    // _reset game _perception
+    // reset game state
     this._reset();
   }
 
@@ -84,14 +82,13 @@ class Client extends EventEmitter {
 
   setInputs(inputs) {
     if (!this.connected) return Promise.reject(new Error("cannot set inputs while disconnected"));
-    this._inputsQueue.enq(inputs);
     return this._processInputs();
   }
 
-  _processInputs() {
-    if (this._inputsQueueProcessor === null) {
-      this._inputsQueueProcessor = new Promise(((resolve, reject) => {
-        let inputs = {
+  _processInputs(inputs) {
+    if (this._inputsProcessor === null) {
+      this._inputsProcessor = new Promise(((resolve, reject) => {
+        let san = {
           up: false,
           down: false,
           left: false,
@@ -99,33 +96,29 @@ class Client extends EventEmitter {
           shooting: false,
           rotation: this._inputs.rotation
         };
-        while (true) {
-          if (this._inputsQueue.isEmpty()) break;
-          let val = this._inputsQueue.deq();
-          if ('up' in val) inputs.up = inputs.up || val.up;
-          if ('down' in val) inputs.down = inputs.down || val.down;
-          if ('left' in val) inputs.left = inputs.left || val.left;
-          if ('right' in val) inputs.right = inputs.right || val.right;
-          if ('shooting' in val) inputs.shooting = inputs.shooting || val.shooting;
-          if ('rotation' in val) inputs.rotation = val.rotation;
-        }
-        this._inputsQueueProcessor = null; // set it here because we already flushed the queue; anything added after would not be included in this message.
+        if ('up' in inputs) san.up = san.up || inputs.up;
+        if ('down' in inputs) san.down = san.down || inputs.down;
+        if ('left' in inputs) san.left = san.left || inputs.left;
+        if ('right' in inputs) san.right = san.right || inputs.right;
+        if ('shooting' in inputs) san.shooting = san.shooting || inputs.shooting;
+        if ('rotation' in inputs) san.rotation = inputs.rotation;
 
         let builder = new flatbuffers.Builder(8);
         visibio.Inputs.startInputs(builder);
-        visibio.Inputs.addUp(builder, inputs.up);
-        visibio.Inputs.addDown(builder, inputs.down);
-        visibio.Inputs.addLeft(builder, inputs.left);
-        visibio.Inputs.addRight(builder, inputs.right);
-        visibio.Inputs.addShooting(builder, inputs.shooting);
-        visibio.Inputs.addRotation(builder, inputs.rotation);
+        visibio.Inputs.addUp(builder, san.up);
+        visibio.Inputs.addDown(builder, san.down);
+        visibio.Inputs.addLeft(builder, san.left);
+        visibio.Inputs.addRight(builder, san.right);
+        visibio.Inputs.addShooting(builder, san.shooting);
+        visibio.Inputs.addRotation(builder, san.rotation);
         return this._send(message(builder, visibio.Inputs.endInputs(builder), visibio.Packet.Inputs))
-          .then(() => {
-            this._inputs = inputs;
-          })
       }))
+    } else {
+      this._inputsProcessor = this._inputsProcessor.then(() => {
+        this._processInputs(inputs)
+      })
     }
-    return this._inputsQueueProcessor
+    return this._inputsProcessor
   }
 
   close() {
