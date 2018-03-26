@@ -88,10 +88,6 @@ class InputHandler extends EventEmitter {
 
     // TODO add rotation handler
   }
-
-  get inputs() {
-    return this._state;
-  }
 }
 
 export default Game;
