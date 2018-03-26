@@ -16,7 +16,7 @@ class Renderer {
   _drawWorld() {
     // DO NOT USE - it was late and I did a dumb
     // THIS WILL ANNHILATE YOUR BROWSER AND YOUR COMPUTER
-    
+
     // TODO combine terrain map into image based on position (get FOV)
 
     /*for(var y = 0; y < this._worldState.height; y++) {

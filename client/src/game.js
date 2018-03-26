@@ -26,7 +26,7 @@ class Game {
 
     // input handler
     this._inputHandler = new InputHandler();
-    this._inputHandler.on('input', () => this._client.setInputs(this._inputHandler.inputs));
+    this._inputHandler.on('input', (inputs) => this._client.setInputs(inputs));
   }
 
   update(entities) {
@@ -60,7 +60,7 @@ class InputHandler extends EventEmitter {
     $('#stage').keydown(event => {
       // check if key in _keys
       if (Object.keys(this._keys).includes(event.which)) {
-        this._keys[event.which] = true;
+        this._state[this._keys[event.which]] = true;
         this.emit('input', this._state);
       }
     });
@@ -69,7 +69,7 @@ class InputHandler extends EventEmitter {
     $('#stage').keyup(event => {
       // check if key in _keys
       if (Object.keys(this._keys).includes(event.which)) {
-        this._keys[event.which] = false;
+        this._state[this._keys[event.which]] = false;
         this.emit('input', this._state);
       }
     });

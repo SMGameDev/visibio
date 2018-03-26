@@ -82,7 +82,7 @@ class Client extends EventEmitter {
 
   setInputs(inputs) {
     if (!this.connected) return Promise.reject(new Error("cannot set inputs while disconnected"));
-    return this._processInputs();
+    return this._processInputs(inputs); // <- you forgot to pass inputs in :)
   }
 
   _processInputs(inputs) {
