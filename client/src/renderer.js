@@ -14,6 +14,21 @@ class Renderer {
   }
 
   _drawWorld() {
+    let ctx = document.getElementById('draw-canvas').getContext('2d');
+    for(var y = 0; y < this._worldState.height; y++) {
+      for(var x = 0; x < this._worldState.width; y++) {
+        let elem = this._worldState.source[y * this._worldState.height + x];
+        let image = new Image();
+        image.src = 'assets/' + (Object.keys(this.spriteMap).includes(elem) ? this.spriteMap[elem] : 'error.png';
+        image.onload(() => {
+          ctx.drawImage(image, x * 64, y * 64, 64, 64);
+        })
+      }
+    }
+
+    let sprite = PIXI.Sprite.fromImage(ctx.toDataUrl('image/png'));
+    this._app.stage.addChild(sprite);
+
     // DO NOT USE - it was late and I did a dumb
     // THIS WILL ANNHILATE YOUR BROWSER AND YOUR COMPUTER
 
