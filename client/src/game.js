@@ -39,6 +39,11 @@ class InputHandler extends EventEmitter {
   // input handler constructor
   constructor() {
     super();
+
+    // centers for rotation calculation
+    this.centerX = 960;
+    this.centerY = 540;
+
     // keyboard state to emit
     this._state = {
       up: false,
@@ -87,6 +92,33 @@ class InputHandler extends EventEmitter {
     });
 
     // TODO add rotation handler
+    $('#stage').mousemove(event => {
+      // get x and y position on graph from player center which as acting as the origin
+      // if x is greater than center position, x is positive, else negative
+      // if y is greater than center position, it is technically below the y axis and thus negative.
+      let x = event.pageX - this.centerX, y = this.centerY - event.pageY;
+
+      // if they are on the center, there is no rotation and no change
+      if(x == 0 && y == 0) {
+        return;
+      }
+
+      // x is opposite, y is adjacent
+      let baseAngle = Math.atan(x/y);
+
+      // if it is in Quadrant III, add 180 deg (pi radians)
+      if(x < 0 && y < 0)
+        baseAngle += 3.14159; // use approx for consistency
+      // if it is in Quadrant II, add 270 deg (approx 4.71239 radians)
+      else if(x < 0)
+        baseAngle += 4.71239;
+      // if it is in Quadrant IV, add 90 deg (approx. 1.5708 radians)
+      else if(y < 0)
+        baseAngle += 1.5708;
+
+      this._state.rotation = baseAngle;
+      this.emit('input', this._state);
+    });
   }
 }
 

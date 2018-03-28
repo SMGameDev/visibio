@@ -3,17 +3,26 @@ import $ from 'jquery';
 
 class Renderer {
   constructor() {
+    // create pixi app
     this._app = new PIXI.Application({height: 1080, width: 1920});
+    // add the app view to the save
     $('#stage').html(this._app.view);
     this._prevFrame = {};
+    // sprite to hold world
+    this._worldSprite = null;
   }
 
   set world(world) {
+    // every time world is set / updated redraw
     this._worldState = world.terrain;
     this._drawWorld();
   }
 
+  // draw the world
   _drawWorld() {
+    if (this._worldSprite != null)
+      this._app.state.removeChild(this._worldSprite
+
     let ctx = document.getElementById('draw-canvas').getContext('2d');
     for(var y = 0; y < this._worldState.height; y++) {
       for(var x = 0; x < this._worldState.width; y++) {
@@ -26,22 +35,10 @@ class Renderer {
       }
     }
 
-    let sprite = PIXI.Sprite.fromImage(ctx.toDataUrl('image/png'));
-    this._app.stage.addChild(sprite);
-
-    // DO NOT USE - it was late and I did a dumb
-    // THIS WILL ANNHILATE YOUR BROWSER AND YOUR COMPUTER
-
-    // TODO combine terrain map into image based on position (get FOV)
-
-    /*for(var y = 0; y < this._worldState.height; y++) {
-      for(var x = 0; x < this._worldState.width; y++) {
-        let elem = this._worldState.source[y * this._worldState.height + x];
-        let sprite = PIXI.Sprite.fromImage('assets/' + (Object.keys(this.spriteMap).includes(elem) ? this.spriteMap[elem] : 'error.png'));
-        sprite.position.set(x * 32, y * 32);
-        this._app.stage.addChild(sprite);
-      }
-    }*/
+    // sprite from psuedo image
+    this._worldSprite = PIXI.Sprite.fromImage(ctx.toDataUrl('image/png'));
+    // update sprite
+    this._app.stage.addChild(this._worldSprite);
   }
 
   drawEntities(entities) {
