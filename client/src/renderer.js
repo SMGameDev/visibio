@@ -20,23 +20,26 @@ class Renderer {
 
   // draw the world
   _drawWorld() {
+    console.log('drawing world');
     if (this._worldSprite != null)
-      this._app.state.removeChild(this._worldSprite
+      this._app.state.removeChild(this._worldSprite);
 
     let ctx = document.getElementById('draw-canvas').getContext('2d');
+
+    // image template class
+    let image = new Image();
     for(var y = 0; y < this._worldState.height; y++) {
-      for(var x = 0; x < this._worldState.width; y++) {
+      for(var x = 0; x < this._worldState.width; x++) {
         let elem = this._worldState.source[y * this._worldState.height + x];
-        let image = new Image();
-        image.src = 'assets/' + (Object.keys(this.spriteMap).includes(elem) ? this.spriteMap[elem] : 'error.png';
-        image.onload(() => {
+        image.src = '../assets/' + (Object.keys(this.spriteMap).includes(elem) ? this.spriteMap[elem] : 'empty.png');
+        image.onload = () => {
           ctx.drawImage(image, x * 64, y * 64, 64, 64);
-        })
+        };
+        console.log('testing');
       }
     }
-
     // sprite from psuedo image
-    this._worldSprite = PIXI.Sprite.fromImage(ctx.toDataUrl('image/png'));
+    this._worldSprite = PIXI.Sprite.fromImage(document.getElementById('draw-canvas').toDataURL('image/png'));
     // update sprite
     this._app.stage.addChild(this._worldSprite);
   }
