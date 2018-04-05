@@ -29,7 +29,6 @@ class Renderer {
       for(var x = 0; x < this._fov.x; x++) {
         let sprite = PIXI.Sprite.fromImage('res/' + this._getSprite(this._worldLayout.source[y * this._worldLayout.width + x]));
         sprite.position.set(x * 64, y * 64); // position
-        sprite.scale.set(2, 2); // double size
         this._app.stage.addChild(sprite);
       }
     }
@@ -39,7 +38,7 @@ class Renderer {
   _getSprite(code) {
     if (Object.keys(this.spriteMap).includes(code))
       return this.spriteMap[code];
-    return 'empty.png';
+    return 'error.png';
   }
 
   drawEntities(entities) {
