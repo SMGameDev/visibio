@@ -91,7 +91,6 @@ class InputHandler extends EventEmitter {
       this.emit('input', this._state);
     });
 
-    // TODO add rotation handler
     $('#stage').mousemove(event => {
       // get x and y position on graph from player center which as acting as the origin
       // if x is greater than center position, x is positive, else negative
