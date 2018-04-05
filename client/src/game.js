@@ -104,7 +104,7 @@ class InputHandler extends EventEmitter {
       }
 
       // x is opposite, y is adjacent
-      let baseAngle = Math.atan(x/y);
+      let baseAngle = Math.atan(Math.abs(x/y));
 
       // if it is in Quadrant III, add 180 deg (pi radians)
       if(x < 0 && y < 0)
