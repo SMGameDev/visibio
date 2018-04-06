@@ -32,6 +32,8 @@ class Game {
   update(entities) {
     // ensure connected
     if (!this._connected) return;
+    // call render loop
+    this._renderer.render(entities);
   }
 }
 
