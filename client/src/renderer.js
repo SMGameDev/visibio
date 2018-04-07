@@ -26,16 +26,34 @@ class Renderer {
 
   // initialize the screen
   _initWorld(playerPos) {
-    // TODO shift player to mirror
-    for(var y = 0; y < this._fov.y; y++) {
-      for(var x = 0; x < this._fov.x; x++) {
+    let absPos = {x: Math.floor(-playerPos[0]), y: Math.floor(-playerPos[1])};
+    let offset = {x: absPos.x - this._fov.x / 2, y: absPos.y - this._fov.y / 2};
+    let edgeShift = this._getEdgeShift(offset);
+    offset.x = offset.x > 0 ? offset.x : 0;
+    offset.y = offset.y > 0 ? offset.y : 0;
+    for(var y = offset.y; y < this._fov.y + offset.y; y++) {
+      for(var x = offset.x; x < this._fov.x + offset.x; x++) {
         let sprite = PIXI.Sprite.fromImage('res/' + this._getSprite(this._worldLayout.source[y * this._worldLayout.width + x]));
-        sprite.position.set(x * 64, y * 64); // position
+        sprite.position.set((x + edgeShift.x) * 64, (y + edgeShift.y) * 64); // position
         this._app.stage.addChild(sprite);
       }
     }
     this._hasInit = true;
     this._prevPos = playerPos;
+  }
+
+  // handle player when they reach the border
+  _getEdgeShift(offset) {
+    let edgeShift = {x: 0, y: 0};
+    if (offset.x < 0)
+      edgeShift.x = -offset.x;
+    else if(offset.x + this._fov.x >= this._worldLayout.width)
+      edgeShift.x = -(this._worldLayout.width - (offset.x + this._fov.x))
+    if (offset.y < 0)
+      edgeShift.y = -offset.y;
+    else if(offset.y + this._fov.y >= this._worldLayout.height)
+      edgeShift.y = -(this._worldLayout.height - (offset.y + this._fov.y))
+    return edgeShift;
   }
 
   _drawWorld(playerPos) {
@@ -61,23 +79,26 @@ class Renderer {
       let sprite;
       // player
       if (entity.type == 1)
-        sprite = this._drawEntity(entity.id, 0, 0);
+        sprite = this._drawEntity(entity.id, 0, 0, entity.rotation);
       else
-        sprite = this._drawEntity(entity.id, entity.x, entity.y);
+        sprite = this._drawEntity(entity.id, entity.x, entity.y, entity.rotation);
       this._currentEntities.push(sprite);
     }
   }
 
-  _drawEntity(id, posX, posY) {
+  _drawEntity(id, posX, posY, rotation) {
     let sprite = PIXI.Sprite.fromImage('res/' + this._getSprite(id));
-    sprite.position.set(posX + this.MAX_WIDTH / 2, posY + this.MAX_HEIGHT / 2); // position
+    sprite.position.set((posX - sprite.width / 2) + this.MAX_WIDTH / 2, (posY - sprite.height / 2) + this.MAX_HEIGHT / 2); // position
+    sprite.anchor.x = 0.5;
+    sprite.anchor.y = 0.5;
+    sprite.rotation = rotation;
     this._app.stage.addChild(sprite);
     return sprite;
   }
 
   render(entities) {
     // shift it up by x and y max / 2
-    let pPos = [entities[0].x + this.MAX_WIDTH / 2, entities[0].y + this.MAX_HEIGHT / 2];
+    let pPos = [entities[0].x, entities[0].y];
     if (!this._hasInit)
       this._initWorld(pPos);
     else
