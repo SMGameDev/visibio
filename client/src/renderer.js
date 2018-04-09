@@ -16,6 +16,8 @@ class Renderer {
     this.MAX_WIDTH = 1920
     // array to hold all visible entity sprites TODO repurpose to store actual entities for updating and create separate array for sprites
     this._currentEntities = [];
+    // use to store temporary border sprites
+    this._borderSprites = [];
   }
 
   set world(world) {
@@ -26,20 +28,22 @@ class Renderer {
 
   // initialize the screen
   _initWorld(playerPos) {
-    let absPos = {x: Math.floor(-playerPos[0]), y: Math.floor(-playerPos[1])};
+    let absPos = {x: Math.floor(playerPos[0]), y: Math.floor(-playerPos[1])};
     let offset = {x: absPos.x - this._fov.x / 2, y: absPos.y - this._fov.y / 2};
     let edgeShift = this._getEdgeShift(offset);
     offset.x = offset.x > 0 ? offset.x : 0;
     offset.y = offset.y > 0 ? offset.y : 0;
+    let transformX = playerPos[0] % 1, transformY = -playerPos[1] % 1
     for(var y = offset.y; y < this._fov.y + offset.y; y++) {
       for(var x = offset.x; x < this._fov.x + offset.x; x++) {
         let sprite = PIXI.Sprite.fromImage('res/' + this._getSprite(this._worldLayout.source[y * this._worldLayout.width + x]));
-        sprite.position.set((x + edgeShift.x) * 64, (y + edgeShift.y) * 64); // position
+        sprite.position.set((x + edgeShift.x) * 64 + transformX, (y + edgeShift.y) * 64 + transformY); // position
         this._app.stage.addChild(sprite);
       }
     }
     this._hasInit = true;
     this._prevPos = playerPos;
+    // TODO generate border
   }
 
   // handle player when they reach the border
